@@ -1,6 +1,9 @@
 class MockMatcher(object):
 	_multiplicity = None
+	_multiplicity_description = None
+	
 	_cond_args = None
+	_cond_description = None
 	
 	def __init__(self, mock_obj):
 		self._mock = mock_obj
@@ -12,8 +15,9 @@ class MockMatcher(object):
 		"""
 		self.__assert_not_set(self._cond_args, "argument condition")
 		self._cond_args = self._args_equal_func(args, kwargs)
+		self._cond_description = "with arguments equal to:\n%s" % (self._describe_arg_set((args, kwargs)))
 		return self
-	
+		
 	def where_args(self, func):
 		"""
 		restrict the checked set of function calls to those where
@@ -21,30 +25,35 @@ class MockMatcher(object):
 		"""
 		self.__assert_not_set(self._cond_args, "argument condition")
 		self._cond_args = func
+		self._cond_description = "where arguments satisfy the supplied function: %r" % (func,)
 		return self
 
 	def exactly(self, n):
 		"""set the allowed number of calls made to this function"""
 		self.__assert_not_set(self._multiplicity, "number of calls")
 		self._multiplicity = (self._eq, n)
+		self._multiplicity_description = "exactly %s" % (n,)
 		return self
 	
 	def at_least(self, n):
 		"""set the allowed number of calls made to this function"""
 		self.__assert_not_set(self._multiplicity, "number of calls")
 		self._multiplicity = (self._gte, n)
+		self._multiplicity_description = "at least %s" % (n,)
 		return self
 	
 	def at_most(self, n):
 		"""set the allowed number of calls made to this function"""
 		self.__assert_not_set(self._multiplicity, "number of calls")
 		self._multiplicity = (self._lte, n)
+		self._multiplicity_description = "at most %s" % (n,)
 		return self
 	
 	def between(self, start_range, end_range):
 		"""set the allowed number of calls made to this function"""
 		self.__assert_not_set(self._multiplicity, "number of calls")
 		self._multiplicity = (self._btwn, start_range, end_range)
+		self._multiplicity_description = "between %s and %s" % (start_range, end_range)
 		return self
 
 	def get_calls(self):
@@ -76,8 +85,9 @@ class MockMatcher(object):
 		return calls[0]
 
 	# syntactic sugar to make more readabale expressions
-	def __get_times(self): return self
-	times = property(__get_times)
+	def __noop(self): return self
+	times = property(__noop)
+	time = property(__noop)
 	
 	def once(self):
 		"""alias for exactly(1).times"""
@@ -140,7 +150,7 @@ class MockMatcher(object):
 		
 		if self._multiplicity is None:
 			# default operation
-			self._multiplicity = (self._gte, 1)
+			self.at_least(1).times
 		operator = self._multiplicity[0]
 		operator_args = self._multiplicity[1:]
 		return operator(num_calls, *operator_args)
@@ -180,6 +190,39 @@ class MockMatcher(object):
 	def _btwn(self, a, b, c):
 		ends = (b,c)
 		return a >= min(ends) and a <= max(ends)
+	
+	def __repr__(self):
+		return "Mock \"%s\" expected %s\nIt received %s" % (self._mock, self.describe(), self.describe_reality())
+	
+		
+	# fluffy user-visible expectation descriptions
+	def _describe_arg_set(self, arg_set):
+		arg_set = map(lambda x: None if x is None or len(x) == 0 else x, arg_set)
+		args, kwargs = arg_set
+		
+		if arg_set == [None, None]:
+			return "No arguments"
+		sep = ", "
+		args = None if args is None else sep.join(map(repr, args))
+		kwargs = None if kwargs is None else sep.join(["%s=%r" % (key, val) for key, val in kwargs])
+		return sep.join(filter(lambda x: x is not None, (args, kwargs)))
+
+	def describe(self):
+		desc = "%s calls" % (self._multiplicity_description,)
+		if self._cond_description is not None:
+			desc += " %s" % (self._cond_description)
+		return desc
+	
+	def describe_reality(self):
+		desc = "%s calls" % (self._mock.call_count,)
+		if self._mock.call_count > 0:
+			desc += " with arguments: "
+			i = 1
+			for arg_set in self._mock.call_args_list:
+				desc += "\n  %s:   %s" % (i, self._describe_arg_set(arg_set))
+				i += 1
+		return desc
+
 
 # class MockExpectations(object):
 # 	def called():

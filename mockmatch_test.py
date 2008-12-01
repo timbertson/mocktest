@@ -1,5 +1,6 @@
 import unittest
 from mock import Mock
+from mock import SpecTest
 
 class TestPySpec(unittest.TestCase):
 	def test_should_track_calls(self):
@@ -101,6 +102,56 @@ class TestPySpec(unittest.TestCase):
 		
 		self.assertTrue(obj.foo.called.twice().where_args(lambda *args: all([x < 3 for x in args])))
 		self.assertTrue(obj.foo.called.exactly(4).times)
+	
+class TestAutoSpecVerification(unittest.TestCase):
+	def test_should_hijack_setup_and_teardown(self):
+		lines = []
+		def capture(line):
+			lines.append(line)
+		Mock._setup = Mock(side_effect = lambda: capture("_setup"))
+		Mock._teardown = Mock(side_effect = lambda: capture("_teardown"))
+		
+		class Foo(SpecTest):
+			##TODO: fix this rubbish! maybe in the core libray itself! o_O
+			_testMethodName = 'test_main_is_called'
+			_testMethodDoc = None
+
+			def setUp(self):
+				capture("setup")
+			def tearDown(self):
+				capture("teardown")
+			def test_main_is_called(self):
+				capture("main")
+
+		suite = unittest.makeSuite(Foo)
+		result = unittest.TestResult()
+		suite.run(result)
+		self.assertTrue(result.wasSuccessful)
+		self.assertEqual(lines, ['_setup', 'setup', 'main', '_teardown', 'teardown'])
+		assert Mock._setup.called.once()
+		assert Mock._teardown.called.once()
+	
+	#TODO: expectation / reality formatting
+	#TODO: ensure things are alyways checked (and cleared)
+	#TODO: test assertTrue for more verbose error messages
+
+class FooTest(SpecTest):
+	_testMethodName = 'test_should_do_expectations'
+	_testMethodDoc = None
+	
+	def setUp(self):
+		print "test case pre"
+	
+	def tearDown(self):
+		print "test case post"
+	
+	def test_should_do_expectations(self):
+		f = Mock()
+		f.foo.is_expected.once()
+		f.foo('a')
+		f.foo()
+		self.assertTrue(f.foo.called.once())
+
 
 if __name__ == '__main__':
 	unittest.main()
