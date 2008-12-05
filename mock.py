@@ -22,54 +22,12 @@ __all__ = (
 
 __version__ = '0.4.0'
 
+from mockmatcher import MockMatcher
+
 DEFAULT = object()
 
-from mockmatch import MockMatcher
-
-import unittest
-class SpecTest(unittest.TestCase):
-	def __compose(self, a, b):
-		if a is None:
-			return b
-		if b is None:
-			return a
-		def do_both():
-			a()
-			b()
-		do_both.__name__ = b.__name__
-		return do_both
-		
-	def __init__(self, *args, **kwargs):
-		try:
-			subclass_setup = self.setUp
-		except attributeError:
-			subclass_setup = None
-		try:
-			subclass_teardown = self.tearDown
-		except attributeError:
-			subclass_teardown = None
-		
-		self.setUp = self.__compose(self.__setup, subclass_setup)
-		self.tearDown = self.__compose(self.__teardown, subclass_teardown)
-		super(unittest.TestCase, self).__init__(*args, **kwargs)
-	
-	def __setup(self):
-		print "inner setup"
-		Mock._setup()
-	
-	def __teardown(self):
-		print "inner teardown"
-		Mock._teardown()
-
-	# a helper to make mock assertions more traceable
-	# (the same does not make sense for assertFalse)
-	def assertTrue(self, expr, desc = None):
-		if desc is None:
-			desc = expr
-		super(unittest.TestCase, self).assertTrue(expr, desc)
-	
 class Mock(object):
-	_all_expectations = []
+	_all_expectations = None
 
 	@classmethod
 	def _setup(cls):
@@ -79,10 +37,10 @@ class Mock(object):
 	def _teardown(cls):
 		for expectation in cls._all_expectations:
 			assert expectation, expectation
-		cls._all_expectations = []
+		cls._all_expectations = None
 		
-	def __init__(self, methods=None, spec=None, side_effect=None,
-				 return_value=DEFAULT, name=None, parent=None):
+	def __init__(self, name=None, methods=None, spec=None, action=None,
+				 return_value=DEFAULT, parent=None):
 		self._parent = parent
 		self._name = name
 		if spec is not None and methods is None:
@@ -91,7 +49,7 @@ class Mock(object):
 		self._methods = methods
 		self._children = {}
 		self._return_value = return_value
-		self.side_effect = side_effect
+		self._side_effect = action
 		
 		self.reset()
 
@@ -103,13 +61,14 @@ class Mock(object):
 		return str(self._name) if self._name is not None else "unknown-mock"
 
 	def __expect_call_matcher(self):
+		if self.__class__._all_expectations is None:
+			raise RuntimeError, "Mock._setup has not been called. Make sure you are inheriting from mock.TestCase, not unittest.TestCase"
 		matcher = MockMatcher(self)
 		self.__class__._all_expectations.append(matcher)
 		return matcher
 	is_expected = property(__expect_call_matcher)
 
 	def reset(self):
-		# self.called = False
 		self.call_args = None
 		self.call_count = 0
 		self.call_args_list = []
@@ -132,7 +91,6 @@ class Mock(object):
 
 
 	def __call__(self, *args, **kwargs):
-		# self.called = True
 		self.call_count += 1
 		self.call_args = (args, kwargs)
 		self.call_args_list.append((args, kwargs))
@@ -146,8 +104,8 @@ class Mock(object):
 			name = parent._name + '.' + name
 			parent = parent._parent
 
-		if self.side_effect is not None:
-			self.side_effect()
+		if self._side_effect is not None:
+			self._side_effect()
 			
 		return self.return_value
 	
@@ -160,13 +118,8 @@ class Mock(object):
 			self._children[name] = Mock(parent=self, name=name)
 			
 		return self._children[name]
-	
-	
-	def assert_called_with(self, *args, **kwargs):
-		assert self.call_args == (args, kwargs), 'Expected %s\nBut got %s' % ((args, kwargs), self.call_args)
 		
 
-		
 def _dot_lookup(thing, comp, import_path):
 	try:
 		return getattr(thing, comp)

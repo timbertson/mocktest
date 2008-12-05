@@ -17,7 +17,8 @@ class MockMatcher(object):
 		self._cond_args = self._args_equal_func(args, kwargs)
 		self._cond_description = "with arguments equal to:\n%s" % (self._describe_arg_set((args, kwargs)))
 		return self
-		
+	with_ = with_args
+	
 	def where_args(self, func):
 		"""
 		restrict the checked set of function calls to those where
@@ -27,6 +28,7 @@ class MockMatcher(object):
 		self._cond_args = func
 		self._cond_description = "where arguments satisfy the supplied function: %r" % (func,)
 		return self
+	where_ = where_args
 
 	def exactly(self, n):
 		"""set the allowed number of calls made to this function"""
@@ -66,8 +68,8 @@ class MockMatcher(object):
 		If the conditions on this matcher are not satisfied, returns None
 		"""
 		if not self._matches():
-			return None
-		return tuple([self._clean_args(call) for call in self._mock.call_args_list if self._args_match(call)])
+			raise AssertionError, self
+		return [self._clean_args(call) for call in self._mock.call_args_list if self._args_match(call)]
 	
 	def get_args(self):
 		"""
@@ -96,6 +98,10 @@ class MockMatcher(object):
 	def twice(self):
 		"""alias for exactly(2).times"""
 		return self.exactly(2)
+	
+	def thrice(self):
+		"""alias for exactly(3).times"""
+		return self.exactly(3)
 	
 	# overloading
 	def __eq__(self, other):
@@ -131,8 +137,8 @@ class MockMatcher(object):
 		call_args = (args, kwargs)
 		  e.g: call_args = ((arg1, arg2), {'key1':'value'})
 		"""
-		print "args match for a single call? given arguments are"
-		print "args: %r" % (call_args[0],)
+		# print "args match for a single call? given arguments are"
+		# print "args: %r" % (call_args[0],)
 		if self._cond_args is None:
 			return True
 		
@@ -161,23 +167,24 @@ class MockMatcher(object):
 		args (tuple), and its kewyord arguments match the kwargs (dict)
 		"""
 		def check(*a, **k):
-			print "Comapring args:"
-			print "%r      %r" % (a, k)
-			print "%r      %r" % (args, kwargs)
+			# print "Comapring args:"
+			# print "%r      %r" % (a, k)
+			# print "%r      %r" % (args, kwargs)
 			return a == args and k == kwargs
 		return check
 
 	
 	def _clean_args(self, call_args):
 		"""
-		replaces empty tuples and dicts with None, for the sake of
-		making test assertions more readable / obvious
+		Replaces empty args with None, and returns a 1-length
+		tuple of (args,) if no kwargs appear.
+		This is for the sake of making test assertions more readable
 		"""
 		args, kwargs = call_args
 		if len(args) == 0:
 			args = None
 		if len(kwargs) == 0:
-			kwargs = None
+			return args
 		return (args, kwargs)
 
 	# multiplicity-checking operators
@@ -222,11 +229,3 @@ class MockMatcher(object):
 				desc += "\n  %s:   %s" % (i, self._describe_arg_set(arg_set))
 				i += 1
 		return desc
-
-
-# class MockExpectations(object):
-# 	def called():
-# 		return MockMatcher(self)
-# 
-# extend the Mock class:
-#mock.Mock.__bases__ = (MockExpectations,) # + mock.Mock.__bases__
