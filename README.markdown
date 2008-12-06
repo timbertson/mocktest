@@ -1,6 +1,6 @@
 # mocktest
-
-## What is it?
+... is an addition to Michael Foord's popular Mock module, supporting
+powerful expectation matching behaviour for Mock objects.
 
 ## Where did it come from?
 I am a big fan of rspec, but less of a fan of ruby as a whole.
@@ -8,6 +8,7 @@ I wanted a to use rspec's powerful should_receive() and associated matchers with
 
 mocktest is by no means a port of rspec - it is much smaller and simpler
 
+---
 ## Mocks
 The Mock part of mocktest is an almost exact copy of Michael Foord's
 [Mock](http://www.voidspace.org.uk/python/modules.shtml#mock).
@@ -38,6 +39,7 @@ the call has occurred.
 Additionally, `Mock().side_effect` has been moved to `Mock()._side_effect`
 and is now set using the action init argument: `Mock(action=doSomething)`
 
+---
 ## Expectations
 Having said that mocktest is not rspec, here are a bunch of useful examples ported from the [rspec documentation](http://rspec.info/documentation/mocks/message_expectations.html)
 
@@ -116,7 +118,7 @@ non-conditional multiplicity check:
 
 (you can apply as many `is_expected`'s to a single function as you like)
 
-### Argument Constraints
+## Argument Constraints
 
 When you don't know the exact arguments, you can supply a checking function.
 If this function does not return True, the expectation fails
@@ -137,13 +139,13 @@ It doesn't have to be an inline lambda expression:
 
 ## Callbacks
 
-If argument contraints aren't enough, or you need to do something
+If argument constraints aren't enough, or you need to do something
 else when a mock is called, you can supply the action to your Mock
 constructor:
 
 	
 	def print_arg(arg):
-		print "Called with: arg"
+		print "Called with: %s" % (arg,)
 
 	myobj.method = Mock(action=print_arg)
 
@@ -153,6 +155,22 @@ This can be handy for raising exceptions to simulate failure.
 
 ## Returning values
 
-
 	Mock().return_value = "result"
 
+---
+# Test Helpers
+There is one important addition to the `mocktest.TestCase` class:
+
+ * `assertRaises(exception_type, callable, < ... >)`
+
+Where additional args can be:
+
+ * `matches="string"` or `matches=re.compile("match_string", custom_flags)`
+ ** Just like message, except a regex.search is required to return a match instead of
+    requiring the strings to be identical
+ * `message="some string"`
+ ** Fails unless the error message (i.e. str(exception)) is equal to this message
+ * `args=(arg1,arg2)`
+ ** Fails unless the arguments provided to the exception constructor match the given args
+
+This was adapted from [http://code.activestate.com/recipes/307970/](http://code.activestate.com/recipes/307970/)
