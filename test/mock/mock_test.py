@@ -6,7 +6,7 @@ from mocktest import pending ##TODO: FIX
 
 import os
 import sys
-this_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..','..','src'))
+this_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..','..'))
 if not this_dir in sys.path:
     sys.path.insert(0, this_dir)
 

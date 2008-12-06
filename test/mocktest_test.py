@@ -1,7 +1,7 @@
 import unittest
 import re
 import sys
-sys.path.append('../src')
+sys.path.append('..')
 
 import mocktest
 from mocktest import Mock, pending

@@ -176,3 +176,6 @@ Where additional args can be:
  ** Fails unless the arguments provided to the exception constructor match the given args
 
 This was adapted from [http://code.activestate.com/recipes/307970/](http://code.activestate.com/recipes/307970/)
+
+# Testing the mocktest library
+I use [nosetests](http://code.google.com/p/python-nose/), and just run it from the root directory. You probably should too!
