@@ -4,6 +4,9 @@ powerful expectation matching behaviour for Mock objects.
 
 It's released under the BSD licence (see the LICENCE file).
 
+Issues / discussion can be found at Google Code:
+[http://code.google.com/p/python-mocktest/](http://code.google.com/p/python-mocktest/)
+
 ## Where did it come from?
 I am a big fan of rspec, but less of a fan of ruby as a whole.
 I wanted a to use rspec's powerful should_receive() and associated matchers with my python mock objects.
