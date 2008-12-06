@@ -15,7 +15,7 @@ class MockMatcher(object):
 		"""
 		self.__assert_not_set(self._cond_args, "argument condition")
 		self._cond_args = self._args_equal_func(args, kwargs)
-		self._cond_description = "with arguments equal to:\n%s" % (self._describe_arg_set((args, kwargs)))
+		self._cond_description = "with arguments equal to: %s" % (self._describe_arg_set((args, kwargs)))
 		return self
 	with_ = with_args
 	
@@ -199,7 +199,11 @@ class MockMatcher(object):
 		return a >= min(ends) and a <= max(ends)
 	
 	def __repr__(self):
-		return "Mock \"%s\" expected %s\nIt received %s" % (self._mock, self.describe(), self.describe_reality())
+		return "Mock \"%s\" %s expectations:\n expected %s\n received %s" % (
+			self._mock,
+			"matched" if self._matches() else "did not match",
+			self.describe(),
+			self.describe_reality())
 	
 		
 	# fluffy user-visible expectation descriptions
@@ -211,7 +215,7 @@ class MockMatcher(object):
 			return "No arguments"
 		sep = ", "
 		args = None if args is None else sep.join(map(repr, args))
-		kwargs = None if kwargs is None else sep.join(["%s=%r" % (key, val) for key, val in kwargs])
+		kwargs = None if kwargs is None else sep.join(["%s=%r" % (key, val) for key, val in kwargs.items()])
 		return sep.join(filter(lambda x: x is not None, (args, kwargs)))
 
 	def describe(self):
@@ -223,7 +227,7 @@ class MockMatcher(object):
 	def describe_reality(self):
 		desc = "%s calls" % (self._mock.call_count,)
 		if self._mock.call_count > 0:
-			desc += " with arguments: "
+			desc += " with arguments:"
 			i = 1
 			for arg_set in self._mock.call_args_list:
 				desc += "\n  %s:   %s" % (i, self._describe_arg_set(arg_set))

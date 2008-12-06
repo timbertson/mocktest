@@ -1,8 +1,17 @@
 import unittest
 from mock import Mock
 import mocktest
+import sys
+from mocktest import pending
+
+def assert_desc(expr):
+	assert expr, expr
 
 class TestAutoSpecVerification(unittest.TestCase):
+
+	def setUp(self):
+		sys.stderr = Mock()
+		sys.stderr.write = self.output = Mock()
 	
 	def run_suite(self, class_):
 		suite = unittest.makeSuite(class_)
@@ -12,8 +21,7 @@ class TestAutoSpecVerification(unittest.TestCase):
 	
 	def run_method(self, test_func):
 		class SingleTest(mocktest.TestCase):
-			def test_method(self):
-				test_func(self)
+			test_method = test_func
 		return self.run_suite(SingleTest)
 		
 	def test_should_hijack_setup_and_teardown(self):
@@ -41,79 +49,122 @@ class TestAutoSpecVerification(unittest.TestCase):
 		@mocktest.pending
 		def test_failure(self):
 			callback('a')
-			assert False
+			raise RuntimeError, "something went wrong!"
+		
+		self.assert_(self.run_method(test_failure).wasSuccessful)
+		# assert_desc(self.output.called.with_('failure one'))
 		
 		@mocktest.pending("reason")
 		def test_failure_with_reason(self):
 			assert False
 			callback('b')
 		
+		self.assert_(self.run_method(test_failure_with_reason).wasSuccessful)
+		# assert_desc(self.output.called.with_('failure two'))
+		
 		@mocktest.pending
 		def test_successful_pending_test(self):
 			assert True
 			callback('c')
 		
-		assert self.run_method(test_failure).wasSuccessful
-		assert self.run_method(test_failure_with_reason).wasSuccessful
-		assert self.run_method(test_successful_pending_test).wasSuccessful
+		self.assert_(self.run_method(test_successful_pending_test).wasSuccessful)
+		# assert_desc(self.output.called.with_('failure three'))
 		
 		self.assertEqual(callback.called.exactly(2).times.get_calls(), [('a',), ('c',)])
-		assert callback.called.once().with_args('a')
 	
-	def test_invalid_usage(self):
+	def test_invalid_usage_before_setup(self):
 		# before any setup
-		self.assertRaises(Mock().is_expected, RuntimeError, "Mock._setup has not been called. Make sure you are inheriting from mock.TestCase, not unittest.TestCase")
-		
+		e = None
+		try:
+			Mock().is_expected
+		except Exception, e_:
+			e = e_
+		self.assertFalse(e is None, "no exception was raised")
+		self.assertEqual(e.__class__, RuntimeError)
+		self.assertEqual(e.message, "Mock._setup has not been called. Make sure you are inheriting from mock.TestCase, not unittest.TestCase")
+	
+	def test_invalid_usage_after_teardown(self):
 		# after a test case
 		Mock._setup()
 		Mock._teardown()
-		self.assertRaises(Mock().is_expected, RuntimeError, "Mock._setup has not been called. Make sure you are inheriting from mock.TestCase, not unittest.TestCase")
-	
-	def test_assert_raises(self):
-		def make_error(*args, **kwargs):
-			raise RuntimeError, "args are %r, kwargs are %r" % (args, kwargs)
-			
-		def test_raise_match(s):
-			s.assertRaises(RuntimeError, lambda: make_error(1,2, foo='bar'), message="args are [1,2], kwargs are {'foo':'bar'}")
-			s.assertRaises(Exception, make_error, matches="^a")
-			s.assertRaises(Exception, make_error, matches="\\}$")
-			s.assertRaises(RuntimeError, lambda: make_error(1,2, foo='bar'), args=((1,2),{'foo':'bar'}), foo="bar")
-
-		self.assertTrue( self.run_method(test_raise_match).wasSuccessful)
 		
+		e = None
+		try:
+			Mock().is_expected
+		except Exception, e_:
+			e = e_
+
+		self.assertFalse(e is None, "no exception was raised")
+		self.assertEqual(e.__class__, RuntimeError)
+		self.assertEqual(e.message, "Mock._setup has not been called. Make sure you are inheriting from mock.TestCase, not unittest.TestCase")
+
+	def make_error(self, *args, **kwargs):
+		print "runtime error is being raised..."
+		raise RuntimeError, "args are %r, kwargs are %r" % (args, kwargs)
+
+	def test_assert_raises_matches(self):
+		def test_raise_match(s):
+			s.assertRaises(RuntimeError, lambda: self.make_error(1,2, foo='bar'), message="args are [1,2], kwargs are {'foo':'bar'}")
+			s.assertRaises(Exception, self.make_error, matches="^a")
+			s.assertRaises(Exception, self.make_error, matches="\\}$")
+			s.assertRaises(RuntimeError, lambda: self.make_error(1,2, foo='bar'), args=((1,2),{'foo':'bar'}), foo="bar")
+		self.assertTrue( self.run_method(test_raise_match).wasSuccessful)
+	
+	def test_assert_raises_verifies_type(self):
 		def test_raise_mismatch_type(s):
-			s.assertRaises(TypeError, make_error)
-		self.assertFalse( self.run_method(test_raise_mismatch_type).wasSuccessful)
+			s.assertRaises(TypeError, self.make_error)
+		result = self.run_method(test_raise_mismatch_type)
+		self.assertFalse(result.failures == 1)
 
+	def test_assert_raises_verifies_message(self):
 		def test_raise_mismatch_message(s):
-			s.assertRaises(RuntimeError, make_error, message='nope')
-		self.assertFalse( self.run_method(test_raise_mismatch_message).wasSuccessful)
+			s.assertRaises(RuntimeError, self.make_error, message='nope')
+		self.assertFalse( self.run_method(test_raise_mismatch_message).failures == 1)
 	
+	def test_assert_raises_verifies_regex(self):
 		def test_raise_mismatch_regex(s):
-			s.assertRaises(RuntimeError, make_error, matches='^a')
-		self.assertFalse( self.run_method(test_raise_mismatch_regex).wasSuccessful)
+			s.assertRaises(RuntimeError, self.make_error, matches='^a')
+		self.assertFalse( self.run_method(test_raise_mismatch_regex).failures == 1)
 	
-	#TODO: expectation / reality formatting
-	#TODO: ensure things are alyways checked (and cleared) on setup / teardown
-	#TODO: test assertTrue for more verbose error messages
+	def test_expectation_formatting(self):
+		self.assertEqual(
+			repr(Mock().called.with_('foo', bar=1).twice()),
+			'\n'.join([
+				'Mock "unknown-mock" did not match expectations:',
+				' expected exactly 2 calls with arguments equal to: \'foo\', bar=1',
+				' received 0 calls'])
+		)
 
-class FooTest(mocktest.TestCase):
-	def setUp(self):
-		print "test case pre"
+	def test_reality_formatting(self):
+		m = Mock(name='ze_mock')
+		m(1,2,3)
+		m(foo='bar')
+		m()
+		m(1, foo=2)
+		self.assertEqual(
+			repr(m.called.once()),
+			'\n'.join([
+				'Mock "ze_mock" did not match expectations:',
+				' expected exactly 1 calls',
+				' received 4 calls with arguments:',
+				'  1:   1, 2, 3',
+				'  2:   foo=\'bar\'',
+				'  3:   No arguments',
+				'  4:   1, foo=2'])
+		)
+
 	
-	def tearDown(self):
-		print "test case post"
-	
+class MockTestTest(mocktest.TestCase):
 	def test_should_do_expectations(self):
-		print self._testMethodName
 		f = Mock()
 		f.foo.is_expected.once()
 		f.foo('a')
 		f.foo()
-		self.assertRaises(AssertionError, Mock._teardown, matching='Mock "foo" expected exactly 1 calls\nIt received 2 calls.*')
+		import re
+		self.assertRaises(AssertionError, Mock._teardown, matching=re.compile('Mock "foo" .*expected exactly 1 calls.* received 2 calls.*', re.DOTALL))
 		
-		# pretend we're in a new test
-		Mock._setup()
+		# pretend we're in a new test (wipe the expected calls register)
+		Mock._all_expectations = []
 
 if __name__ == '__main__':
 	unittest.main()
