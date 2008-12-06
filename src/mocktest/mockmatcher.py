@@ -204,7 +204,6 @@ class MockMatcher(object):
 			"matched" if self._matches() else "did not match",
 			self.describe(),
 			self.describe_reality())
-	
 		
 	# fluffy user-visible expectation descriptions
 	def _describe_arg_set(self, arg_set):
