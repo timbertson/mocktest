@@ -9,7 +9,7 @@ Issues / discussion can be found at Google Code:
 
 ## Where did it come from?
 I am a big fan of rspec, but less of a fan of ruby as a whole.
-I wanted a to use rspec's powerful should_receive() and associated matchers with my python mock objects.
+I wanted a to use rspec's powerful `should_receive()` and associated matchers with my python mock objects.
 
 mocktest is by no means a port of rspec - it is much smaller and simpler
 
