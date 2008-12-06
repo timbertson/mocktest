@@ -2,6 +2,8 @@
 ... is an addition to Michael Foord's popular Mock module, supporting
 powerful expectation matching behaviour for Mock objects.
 
+It's released under the BSD licence (see the LICENCE file).
+
 ## Where did it come from?
 I am a big fan of rspec, but less of a fan of ruby as a whole.
 I wanted a to use rspec's powerful should_receive() and associated matchers with my python mock objects.
@@ -10,8 +12,8 @@ mocktest is by no means a port of rspec - it is much smaller and simpler
 
 ---
 ## Mocks
-The Mock part of mocktest is an almost exact copy of Michael Foord's
-[Mock](http://www.voidspace.org.uk/python/modules.shtml#mock).
+The Mock part of mocktest is a slightly modified version of Michael Foord's
+[Mock](http://www.voidspace.org.uk/python/modules.shtml#mock) class.
 Because it's pretty much identical, I won't cover its usage here.
 
 The only differences are:
