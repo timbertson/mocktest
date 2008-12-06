@@ -5,7 +5,7 @@ from setuptools import setup
 setup(
 	name='mocktest',
 	version='0.1',
-	description='Coroutine-based networking library',
+	description='a mocking and expectation test library for python, inspired by rspec',
 	author='Tim Cuthbertson',
 	author_email='tim3d.junk+mocktest@gmail.com',
 	url='http://github.com/gfxmonk/mocktest/tree',
