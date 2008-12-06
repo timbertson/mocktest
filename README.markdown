@@ -4,8 +4,14 @@ powerful expectation matching behaviour for Mock objects.
 
 It's released under the BSD licence (see the LICENCE file).
 
-Issues / discussion can be found at Google Code:
+Source / Readme:
+[http://github.com/gfxmonk/mocktest/tree/master](http://github.com/gfxmonk/mocktest/tree/master)
+
+Issues / discussion:
 [http://code.google.com/p/python-mocktest/](http://code.google.com/p/python-mocktest/)
+
+Cheese shop entry:
+[http://pypi.python.org/pypi/mocktest](http://pypi.python.org/pypi/mocktest/0.1)
 
 ## Where did it come from?
 I am a big fan of rspec, but less of a fan of ruby as a whole.
