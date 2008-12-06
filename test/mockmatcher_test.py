@@ -1,5 +1,8 @@
 import unittest
-from mock import Mock
+import sys
+sys.path.append('../src')
+
+from mocktest import Mock
 from mocktest import TestCase
 
 class TestPySpec(unittest.TestCase):

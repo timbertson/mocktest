@@ -1,11 +1,17 @@
 import unittest
-from mock import Mock
-import mocktest
+import re
 import sys
-from mocktest import pending
+sys.path.append('../src')
+
+import mocktest
+from mocktest import Mock, pending
 
 def assert_desc(expr):
 	assert expr, expr
+
+class SomeError(RuntimeError):
+	def __str__(self):
+		return "args are %r" % (self.args,)
 
 class TestAutoSpecVerification(unittest.TestCase):
 
@@ -40,7 +46,7 @@ class TestAutoSpecVerification(unittest.TestCase):
 				capture("main")
 
 		result = self.run_suite(Foo)
-		self.assertTrue(result.wasSuccessful)
+		self.assertTrue(result.wasSuccessful())
 		self.assertEqual(lines, ['_setup', 'setup', 'main', '_teardown', 'teardown'])
 	
 	def test_pending(self):
@@ -51,24 +57,24 @@ class TestAutoSpecVerification(unittest.TestCase):
 			callback('a')
 			raise RuntimeError, "something went wrong!"
 		
-		self.assert_(self.run_method(test_failure).wasSuccessful)
-		# assert_desc(self.output.called.with_('failure one'))
+		self.assert_(self.run_method(test_failure).wasSuccessful())
+		assert_desc(self.output.called.with_('[[[ PENDING ]]] ... '))
 		
 		@mocktest.pending("reason")
 		def test_failure_with_reason(self):
 			assert False
 			callback('b')
 		
-		self.assert_(self.run_method(test_failure_with_reason).wasSuccessful)
-		# assert_desc(self.output.called.with_('failure two'))
+		self.assert_(self.run_method(test_failure_with_reason).wasSuccessful())
+		assert_desc(self.output.called.with_('[[[ PENDING ]]] (reason) ... '))
 		
 		@mocktest.pending
 		def test_successful_pending_test(self):
 			assert True
 			callback('c')
 		
-		self.assert_(self.run_method(test_successful_pending_test).wasSuccessful)
-		# assert_desc(self.output.called.with_('failure three'))
+		self.assertEqual(self.run_method(test_successful_pending_test).wasSuccessful(), False)
+		assert_desc(self.output.called.with_('test_successful_pending_test PASSED unexpectedly '))
 		
 		self.assertEqual(callback.called.exactly(2).times.get_calls(), [('a',), ('c',)])
 	
@@ -98,17 +104,27 @@ class TestAutoSpecVerification(unittest.TestCase):
 		self.assertEqual(e.__class__, RuntimeError)
 		self.assertEqual(e.message, "Mock._setup has not been called. Make sure you are inheriting from mock.TestCase, not unittest.TestCase")
 
+
 	def make_error(self, *args, **kwargs):
 		print "runtime error is being raised..."
-		raise RuntimeError, "args are %r, kwargs are %r" % (args, kwargs)
-
+		raise SomeError(*args, **kwargs)
+	
+			
 	def test_assert_raises_matches(self):
 		def test_raise_match(s):
-			s.assertRaises(RuntimeError, lambda: self.make_error(1,2, foo='bar'), message="args are [1,2], kwargs are {'foo':'bar'}")
-			s.assertRaises(Exception, self.make_error, matches="^a")
-			s.assertRaises(Exception, self.make_error, matches="\\}$")
-			s.assertRaises(RuntimeError, lambda: self.make_error(1,2, foo='bar'), args=((1,2),{'foo':'bar'}), foo="bar")
-		self.assertTrue( self.run_method(test_raise_match).wasSuccessful)
+			s.assertRaises(RuntimeError, lambda: self.make_error(1,2), message="args are (1, 2)")
+			s.assertRaises(Exception, self.make_error, matching="^a")
+			s.assertRaises(Exception, self.make_error, matching="\\)$")
+			s.assertRaises(RuntimeError, lambda: self.make_error('foo'), args=('foo',))
+			s.assertRaises(RuntimeError, lambda: self.make_error(), args=())
+		
+		result = self.run_method(test_raise_match)
+		print "fdsjkfdjsfds"
+		print repr(result)
+		assert len(result.failures) == 0, "Expected no failures, got:\n%s" % (result.failures[0][1],)
+		assert len(result.errors) == 0, "Expected no errors, got:\n%s" % (result.errors[0][1],)
+		print "ffffff"
+		self.assertTrue(result.wasSuccessful())
 	
 	def test_assert_raises_verifies_type(self):
 		def test_raise_mismatch_type(s):
@@ -160,7 +176,6 @@ class MockTestTest(mocktest.TestCase):
 		f.foo.is_expected.once()
 		f.foo('a')
 		f.foo()
-		import re
 		self.assertRaises(AssertionError, Mock._teardown, matching=re.compile('Mock "foo" .*expected exactly 1 calls.* received 2 calls.*', re.DOTALL))
 		
 		# pretend we're in a new test (wipe the expected calls register)

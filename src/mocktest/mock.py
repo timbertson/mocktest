@@ -9,8 +9,7 @@
 # Released subject to the BSD License
 # Please see http://www.voidspace.org.uk/python/license.shtml
 
-# Scripts maintained at http://www.voidspace.org.uk/python/index.shtml
-# Comments, suggestions and bug reports welcome.
+# modified by Tim Cuthbertson to integrate MockMatcher functionality
 
 __all__ = (
 	'Mock',
@@ -26,19 +25,8 @@ from mockmatcher import MockMatcher
 
 DEFAULT = object()
 
+
 class Mock(object):
-	_all_expectations = None
-
-	@classmethod
-	def _setup(cls):
-		cls._all_expectations = []
-
-	@classmethod
-	def _teardown(cls):
-		for expectation in cls._all_expectations:
-			assert expectation, expectation
-		cls._all_expectations = None
-		
 	def __init__(self, name=None, methods=None, spec=None, action=None,
 				 return_value=DEFAULT, parent=None):
 		self._parent = parent
@@ -52,6 +40,17 @@ class Mock(object):
 		self._side_effect = action
 		
 		self.reset()
+
+	_all_expectations = None
+	@classmethod
+	def _setup(cls):
+		cls._all_expectations = []
+
+	@classmethod
+	def _teardown(cls):
+		for expectation in cls._all_expectations:
+			assert expectation, expectation
+		cls._all_expectations = None
 
 	def __called_matcher(self):
 		return MockMatcher(self)

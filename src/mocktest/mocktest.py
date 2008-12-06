@@ -19,18 +19,24 @@ def _compose(hook, func):
 	run_hook.__name__ = func.__name__
 	return run_hook
 
+
 def pending(function_or_reason):
 	def wrap_func(func, reason = None):
 		reason_str = "" if reason is None else " (%s)" % reason
 		def actually_call_it(*args, **kwargs):
 			fn_name = func.__name__
+			success = False
 			try:
 				func(*args, **kwargs)
+				success = True
 				print >> sys.stderr, "%s%s PASSED unexpectedly " % (fn_name, reason_str),
 				print "%s%s PASSED unexpectedly " % (fn_name, reason_str),
-			except:
-				print >> sys.stderr, "[[[ PENDING ]]]%s ... " % (reason_str,),
-				print "[[[ PENDING ]]]%s ... " % (reason_str,),
+			except StandardError:
+				print >> sys.stderr, "[[[ PENDING ]]]%s ... " % (reason_str,)
+				print "[[[ PENDING ]]]%s ... " % (reason_str,)
+			if success:
+				print "RAISING!"
+				raise AssertionError, "%s%s PASSED unexpectedly " % (fn_name, reason_str)
 		actually_call_it.__name__ = func.__name__
 		return actually_call_it
 	
@@ -43,6 +49,8 @@ def pending(function_or_reason):
 			return wrap_func(func, function_or_reason)
 		return decorator
 
+def ignore(func):
+	return lambda self: None
 
 class TestCase(unittest.TestCase):
 	def __init__(self, methodName = 'runTest'):
@@ -77,10 +85,10 @@ class TestCase(unittest.TestCase):
 	assertTrue = assert_
 	failUnless = assert_
 	
-	def assertRaises(self, exception, func, message = None, with_args = None, matching=None):
+	def assertRaises(self, exception, func, message = None, args = None, matching=None):
 		"""
 		Enhanced assertRaises, able to:
-		 - check arguments (with_args)
+		 - check arguments (args)
 		 - match a regular expression on the resulting expression message (matching)
 		 - compare message strings (message)
 		"""
@@ -92,11 +100,11 @@ class TestCase(unittest.TestCase):
 			print "NO ERRORS!"
 		except exception, exc:
 			print repr(exc)
-			if with_args is not None:
-				self.failIf(exc.args != with_args,
+			if args is not None:
+				self.failIf(exc.args != args,
 					"%s raised %s with unexpected args: "\
 					"expected=%r, actual=%r"\
-					% (callsig, exc.__class__, with_args, exc.args))
+					% (callsig, exc.__class__, args, exc.args))
 			if matching is not None:
 				pattern = re.compile(matching)
 				self.failUnless(pattern.search(str(exc)),
@@ -104,9 +112,9 @@ class TestCase(unittest.TestCase):
 					"does not match '%s': %r"\
 					% (callsig, exc.__class__, matching, str(exc)))
 			if message is not None:
-				self.failUnless(str(exc) == matching,
+				self.failUnless(str(exc) == message,
 					"%s raised %s, but the exception "\
-					"does not equal '%s': %r"\
+					"does not equal \"%s\": %r"\
 					% (callsig, exc.__class__, message, str(exc)))
 		except:
 			exc_info = sys.exc_info()
