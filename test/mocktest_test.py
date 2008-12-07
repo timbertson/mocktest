@@ -119,29 +119,44 @@ class TestAutoSpecVerification(unittest.TestCase):
 			s.assertRaises(RuntimeError, lambda: self.make_error(), args=())
 		
 		result = self.run_method(test_raise_match)
-		print "fdsjkfdjsfds"
-		print repr(result)
-		assert len(result.failures) == 0, "Expected no failures, got:\n%s" % (result.failures[0][1],)
-		assert len(result.errors) == 0, "Expected no errors, got:\n%s" % (result.errors[0][1],)
-		print "ffffff"
 		self.assertTrue(result.wasSuccessful())
+	
+	def test_assert_true_fails_on_callables(self):
+		def assert_truth(s):
+			s.assertTrue(lambda x: True)
+		result = self.run_method(assert_truth)
+		self.assertFalse(result.wasSuccessful())
+
+	def test_assert_false_fails_on_callables(self):
+		def assert_falseth(s):
+			s.assertFalse(lambda x: False)
+		result = self.run_method(assert_falseth)
+		self.assertFalse(result.wasSuccessful())
+
+	def test_assert__fails_on_callables(self):
+		def assert_assert_(s):
+			s.assert_(lambda x: True)
+		result = self.run_method(assert_assert_)
+		self.assertFalse(result.wasSuccessful())
 	
 	def test_assert_raises_verifies_type(self):
 		def test_raise_mismatch_type(s):
 			s.assertRaises(TypeError, self.make_error)
 		result = self.run_method(test_raise_mismatch_type)
-		self.assertFalse(result.failures == 1)
+		self.assertFalse(result.wasSuccessful())
 
 	def test_assert_raises_verifies_message(self):
 		def test_raise_mismatch_message(s):
 			s.assertRaises(RuntimeError, self.make_error, message='nope')
-		self.assertFalse( self.run_method(test_raise_mismatch_message).failures == 1)
+		result = self.run_method(test_raise_mismatch_message)
+		self.assertFalse(result.wasSuccessful())
 	
 	def test_assert_raises_verifies_regex(self):
 		def test_raise_mismatch_regex(s):
 			s.assertRaises(RuntimeError, self.make_error, matches='^a')
-		self.assertFalse( self.run_method(test_raise_mismatch_regex).failures == 1)
-	
+		result = self.run_method(test_raise_mismatch_regex)
+		self.assertFalse(result.wasSuccessful())
+
 	def test_expectation_formatting(self):
 		self.assertEqual(
 			repr(Mock().called.with_('foo', bar=1).twice()),

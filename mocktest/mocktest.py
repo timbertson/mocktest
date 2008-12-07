@@ -75,15 +75,24 @@ class TestCase(unittest.TestCase):
 	def __teardown(self):
 		Mock._teardown()
 
-	# a helper to make mock assertions more traceable
-	# (the same does not make sense for assertFalse)
+	def __assert_not_callable(self, expr):
+		if callable(expr):
+			raise TypeError, "Assertion called on a callable object - this usually means you forgot to call it"
+
 	def assert_(self, expr, desc = None):
+		self.__assert_not_callable(expr)
 		if desc is None:
 			desc = expr
 		super(TestCase, self).assert_(expr, desc)
 	
 	assertTrue = assert_
 	failUnless = assert_
+	
+	def assertFalse(self, expr, desc = None):
+		self.__assert_not_callable(expr)
+		if desc is None:
+			desc = "Expected (%r) to be False" % (expr,)
+			super(TestCase, self).assertFalse(expr, desc)
 	
 	def assertRaises(self, exception, func, message = None, args = None, matching=None):
 		"""
