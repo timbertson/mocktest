@@ -25,27 +25,42 @@ from mockmatcher import MockMatcher
 
 DEFAULT = object()
 
+#TODO: you should be able to use both children and methods
 
 class Mock(object):
-	def __init__(self, name=None, methods=None, spec=None, action=None,
-				 return_value=DEFAULT, parent=None):
+	def __init__(self, _polymorphic_spec=None, name=None,
+				 methods=None, spec=None, action=None,
+				 children=None, return_value=DEFAULT, parent=None):
+
+		if _polymorphic_spec is not None:
+			# depending on the type of the first argument, us it as name / methods / spec
+			polymorphic_type = type(_polymorphic_spec)
+			if polymorphic_type == str:
+				if name is not None:
+					raise RuntimeError, "first argument looks like a name, but name was also provided"
+				name = _polymorphic_spec
+			else:
+				if not (methods is spec is children is None):
+					raise TypeError, "type of first argument (%s) implies  methods / children / spec, "\
+					                 "but one of these was also provided as a keyword argument" % (type(_polymorphic_spec),)
+				if polymorphic_type == dict or polymorphic_type == list:
+					methods = _polymorphic_spec
+				else:
+					spec = _polymorphic_spec
+
 		self._parent = parent
 		self._name = name
-		if spec is not None and methods is None:
-			methods = [member for member in dir(spec) if not 
-					   (member.startswith('__') and	 member.endswith('__'))]
-		self._methods = methods
-		self._children = {}
+		self._children = self._make_children(children=children, methods=methods, spec=spec)
 		self._return_value = return_value
 		self._side_effect = action
 		
 		self.reset()
-
+	
 	_all_expectations = None
 	@classmethod
 	def _setup(cls):
 		cls._all_expectations = []
-
+	
 	@classmethod
 	def _teardown(cls):
 		for expectation in cls._all_expectations:
@@ -67,15 +82,21 @@ class Mock(object):
 		return matcher
 	is_expected = property(__expect_call_matcher)
 
+	def __reset_mock(self, obj):
+		if isinstance(obj, Mock):
+			print "resetting %r" % (obj,)
+			obj.reset()
+		else:
+			print "NOT resetting %r" % (obj,)
+			
 	def reset(self):
 		self.call_args = None
 		self.call_count = 0
 		self.call_args_list = []
 		self.method_calls = []
 		for child in self._children.itervalues():
-			child.reset()
-		if isinstance(self._return_value, Mock):
-			self._return_value.reset()
+			self.__reset_mock(child)
+		self.__reset_mock(self._return_value)
 		
 	
 	def __get_return_value(self):
@@ -87,7 +108,11 @@ class Mock(object):
 		self._return_value = value
 		
 	return_value = property(__get_return_value, __set_return_value)
-
+	
+	# def __setattr__(self, attr, val):
+	# 	#TODO: add to children
+	# 	
+	# 	pass
 
 	def __call__(self, *args, **kwargs):
 		self.call_count += 1
@@ -103,20 +128,89 @@ class Mock(object):
 			name = parent._name + '.' + name
 			parent = parent._parent
 
+		retval = self.return_value
 		if self._side_effect is not None:
-			self._side_effect()
-			
-		return self.return_value
-	
-	
-	def __getattr__(self, name):
-		if self._methods is not None and name not in self._methods:
-			raise AttributeError("object has no attribute '%s'" % name)
+			side_effect_ret_val = self._side_effect(*args, **kwargs)
+			if isinstance(self._return_value,Mock):
+				retval = side_effect_ret_val
 		
-		if name not in self._children:
-			self._children[name] = Mock(parent=self, name=name)
+		return retval
+	
+	def _make_children(self, children = None, spec = None, methods = None):
+		"""
+		return children (as a dict) given any of the three types of information
+
+		* children (list) -> a dict is returned where all values are set to DEFAULT
+		* children (dict) -> returned as-is
+
+		* methods (list) -> as for a list of children
+		* methods (dict) -> returns a dict, where values are Mock
+		                    objects with their return_values set appropriately
+		
+		* spec -> as for a list of children, except the keys are set to all available
+		          methods on 'spec'
+		
+		If one argument is given, self._modifiable_children is set to False
+		If no arguments are given, self._modifiable_children is set to True and the
+		empty dict is returned.
+		If more than one argument is given, a RuntimeError is raised
+		"""
+		specified = filter(lambda x: x is not None, (children, spec, methods))
+		if len(specified) == 0:
+			self._modifiable_children = True
+			return {}
+		if len(specified) != 1:
+			raise RuntimeError, "only one of (spec, children, methods) can be set on a mock object"
+		
+		self._modifiable_children = False
+		
+		# grab methods from a spec object
+		if spec is not None:
+			methods = [member for member in dir(spec) if not 
+					   (member.startswith('__') and	 member.endswith('__'))]
+
+		if isinstance(children, list):
+			# a list of children is the same as a list of methods
+			methods = children
+			children = None
 			
-		return self._children[name]
+		# if methods don't have return values, give them some:
+		if methods is not None:
+			children = {}
+			if isinstance(methods, list):
+				for name in methods:
+					children[name] = DEFAULT
+			elif isinstance(methods, dict):
+				# populate methods as mocks with return values
+				for name, retval in methods.items():
+					children[name] = self._make_child(name, retval)
+			else:
+				raise "expected methods to be a list or dict, got '%s'" % (type(methods),)
+
+		if not isinstance(children, dict):
+			raise TypeError, "expected children to be a dict, got '%s'" % (type(children),)
+
+		print "children: %r" % (children,)
+		return children
+		
+	def _make_child(self, name, return_value=DEFAULT):
+		return Mock(parent=self, name=name, return_value=return_value)
+		
+	def __getattr__(self, name):
+		def _new():
+			self._children[name] = self._make_child(name)
+			return self._children[name]
+			
+		if name not in self._children:
+			if not self._modifiable_children:
+				raise AttributeError("object has no attribute '%s'" % name)
+			child = _new()
+		else:
+			# child already exists
+			child = self._children[name]
+			if child is DEFAULT:
+				child = _new()
+		return child
 		
 
 def _dot_lookup(thing, comp, import_path):

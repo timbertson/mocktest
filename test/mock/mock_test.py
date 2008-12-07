@@ -30,15 +30,73 @@ class MockTest(TestCase):
 						  "method_calls not initialised correctly")
 		
 		self.assertNone(mock._parent, "parent not initialised correctly")
-		self.assertNone(mock._methods, "methods not initialised correctly")
 		self.assertEquals(mock._children, {}, "children not initialised incorrectly")
 		
 		
 	def testReturnValueInConstructor(self):
 		mock = Mock(return_value=None)
 		self.assertNone(mock.return_value, "return value in constructor not honoured")
+	
+	def testSpecHashAsFirstArgInConstructor(self):
+		mock = Mock({'foo':'bar', 'x':123})
+		self.assertEqual(sorted(mock._children.keys()), ['foo','x'])
+		self.assertEqual(mock.foo(), 'bar')
+		self.assertEqual(mock.x(), 123)
+		self.assertRaises(AttributeError, lambda: mock.blah)
+	
+	def testSpecArrayAsFirstArgInConstructor(self):
+		mock = Mock(['foo', 'x'])
+		self.assertEqual(sorted(mock._children.keys()), ['foo','x'])
+		self.assert_(isinstance(mock.foo(), Mock))
+		self.assert_(isinstance(mock.x(), Mock))
+		self.assertRaises(AttributeError, lambda: mock.blah)
+	
+	def testNameAsFirstArgInConstructor(self):
+		mock = Mock("li'l mocky")
+		self.assertEqual(mock._name, "li'l mocky")
+	
+	def testSpecObjectInConstructor(self):
+		# should set _spec if the first arg in a constructor is not an array, hash or string
+		class MyCls:
+			def a(self):
+				return "foo"
+		mock = Mock(MyCls())
+		self.assertEqual(mock._children.keys(), ['a'])
+		self.assert_(isinstance(mock.a(), Mock))
+		self.assertRaises(Exception, lambda: mock.b)
+	
+	def testPolymorphFailsWhenConflictingOptionsProvidedInConstructor(self):
+		# a hash or array would normally be used as _methods, but it's ambiguous when any of
+		# - methods
+		# - spec
+		# - children
+		# are provided as well
+		self.assertRaises(TypeError, lambda: Mock({'foo':'bar'}, methods=['a','b']))
+		self.assertRaises(TypeError, lambda: Mock({'foo':'bar'}, methods={'a':'b'}))
+		self.assertRaises(TypeError, lambda: Mock({'foo':'bar'}, spec=object()))
+		self.assertRaises(TypeError, lambda: Mock({'foo':'bar'}, children={}))
 		
-		
+
+		self.assertRaises(TypeError, lambda: Mock(['foo','bar'], methods=['a','b']))
+		self.assertRaises(TypeError, lambda: Mock(['foo','bar'], methods={'a':'b'}))
+		self.assertRaises(TypeError, lambda: Mock(['foo','bar'], spec=object()))
+		self.assertRaises(TypeError, lambda: Mock(['foo','bar'], children={}))
+	
+	def testChildrenMustBeADictOrList(self):
+		mock = Mock(children=['foo','bar'])
+		self.assertEqual(mock._children.keys(), ['foo','bar'])
+		self.assert_(isinstance(mock.foo, Mock))
+
+		self.assertRaises(TypeError, lambda: Mock(children=object()))
+		mock = Mock(children={'foo':'bar'})
+		self.assertEqual(mock._children, {'foo':'bar'})
+		self.assertEqual(mock.foo, 'bar')
+	
+	def testChildrenAreTheOnlyChildrenAllowed(self):
+		# we can't access other children when it's given in the constructor
+		mock = Mock(children={'foo':'bar'})
+		self.assertRaises(AttributeError, lambda: mock.new_child)
+	
 	def testSideEffect(self):
 		mock = Mock()
 		def effect():
@@ -48,26 +106,45 @@ class MockTest(TestCase):
 		self.assertRaises(SystemError, mock)
 		self.assertTrue(mock.called, "call not recorded")
 		
-		results = [1, 2, 3]
-		def effect():
-			mock.return_value = results.pop()
+		results = []
+		def effect(n):
+			results.append('call %s' % (n,))
 		mock._side_effect = effect
 		
-		self.assertEquals([mock(), mock(), mock()], [3, 2, 1],
-						  "side effect not used correctly")
+		mock(1)
+		self.assertEquals(results, ['call 1'])
+		mock(2)
+		self.assertEquals(results, ['call 1','call 2'])
 
 		mock = Mock(action=sentinel.SideEffect)
 		self.assertEquals(mock._side_effect, sentinel.SideEffect,
 						  "side effect in constructor not used")
-		
+
+	def testSideEffectReturnUsedWhenReturnValueNotSpecified(self):
+		def return_foo():
+			return "foo"
+		mock = Mock(action=return_foo)
+		self.assertEqual(mock(), 'foo',
+		                "side effect return value not used")
+
+	def testSideEffectReturnNotUsedWhenReturnValueSpecified(self):
+		def return_foo():
+			return "foo"
+		mock = Mock(action=return_foo, return_value='bar')
+		self.assertEqual(mock(), 'bar',
+		                 "return value not used")
 		
 	def testReset(self):
 		parent = Mock()
 		methods = ["something"]
 		mock = Mock(name="child", parent=parent, methods=methods)
-		mock(sentinel.Something, something=sentinel.SomethingElse)
+		# mock(sentinel.Something, something=sentinel.SomethingElse)
 		something = mock.something
+		
+		self.assertEquals(mock.something, something) ##
+		self.assertEquals(mock._children, {'something': something}) ##
 		mock.something()
+		self.assertEquals(mock._children, {'something': something}) ##
 		mock.side_effect = sentinel.SideEffect
 		return_value = mock.return_value
 		return_value()
@@ -76,7 +153,6 @@ class MockTest(TestCase):
 		
 		self.assertEquals(mock._name, "child", "name incorrectly reset")
 		self.assertEquals(mock._parent, parent, "parent incorrectly reset")
-		self.assertEquals(mock._methods, methods, "methods incorrectly reset")
 		
 		self.assertFalse(mock.called, "called not reset")
 		self.assertEquals(mock.call_count, 0, "call_count not reset")
@@ -90,12 +166,21 @@ class MockTest(TestCase):
 		self.assertEquals(mock.return_value, return_value,
 						  "return_value incorrectly reset")
 		self.assertFalse(return_value.called, "return value mock not reset")
-		self.assertEquals(mock._children, {'something': something}, 
-						  "children reset incorrectly")
+		self.assertEquals(mock._children, {'something': something})#, 
+						  # "children reset incorrectly")
 		self.assertEquals(mock.something, something,
 						  "children incorrectly cleared")
 		self.assertFalse(mock.something.called, "child not reset")
 		
+	
+	def testResetOnlyPropagatesToMockChildren(self):
+		a = Mock()
+		mock = Mock(children={'a':a, 'b':'string'})
+		mock.a('foo')
+		self.assertTrue(mock.a.called)
+		mock.reset()
+		self.assertFalse(mock.a.called)
+		# string doesn't have a reset method, so it can't have been called
 	
 	def testCall(self):
 		mock = Mock()
@@ -140,7 +225,16 @@ class MockTest(TestCase):
 		
 		self.assertEquals(something._name, "something", "attribute name not set correctly")
 		self.assertEquals(something._parent, mock, "attribute parent not set correctly")
+	
+	def testChildrenHaveParentSet(self):
+		self.assert_(Mock(children=['foo']).foo._parent is not None)
+	
+	def testMethodsHaveParentSet(self):
+		mock = Mock(methods=['foo'])
+		self.assert_(mock.foo._parent is mock)
 
+		mock = Mock(methods={'foo':'bar'})
+		self.assert_(mock.foo._parent is mock)
 
 	def testMethodCallsRecorded(self):
 		mock = Mock()
@@ -148,8 +242,7 @@ class MockTest(TestCase):
 		mock.something_else.something(6, cake=sentinel.Cake)
 		
 		self.assertEquals(mock.something_else.method_calls,
-						  [("something", (6,), {'cake': sentinel.Cake})],
-						  "method calls not recorded correctly")
+						  [("something", (6,), {'cake': sentinel.Cake})])
 		self.assertEquals(mock.method_calls,
 						  [("something", (3,), {'fish': None}),
 						   ("something_else.something", (6,), {'cake': sentinel.Cake})],
