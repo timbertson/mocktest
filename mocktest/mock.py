@@ -28,6 +28,21 @@ DEFAULT = object()
 #TODO: you should be able to use both children and methods
 
 class Mock(object):
+	# these need to exist here so that __getattr__ / __setattr__ does
+	# not get into an infinite loop when they are first set
+	_children = None
+	_name = None
+	_modifiable_children = None
+	_children = None
+	_orig_children = None
+	_side_effect = None
+	_parent = None
+	_return_value = None
+	call_args = None
+	call_count = None
+	call_args_list = None
+	method_calls = None
+	
 	def __init__(self, _polymorphic_spec=None, name=None,
 				 methods=None, spec=None, action=None,
 				 children=None, return_value=DEFAULT, parent=None,
@@ -66,8 +81,6 @@ class Mock(object):
 		
 		self.reset()
 		
-		self.__initted = True
-	
 	# mockExpecation integration
 	_all_expectations = None
 	@classmethod
@@ -195,13 +208,13 @@ class Mock(object):
 
 	def __has_attr(self, attr):
 		try:
-			a = object.__getattribute__(self, attr)
+			object.__getattribute__(self, attr)
 			return True
 		except AttributeError:
 			return False
 
 	def __setattr__(self, attr, val):
-		if self.__has_attr(attr) or not self.__has_attr('_Mock__initted'):
+		if self.__has_attr(attr):# or not self.__has_attr('_Mock__initted'):
 			object.__setattr__(self, attr, val)
 			return
 
@@ -214,9 +227,6 @@ class Mock(object):
 			self._children[name] = self._make_child(name)
 			return self._children[name]
 
-		if not self.__has_attr('_children'):
-			return object.__getattribute__(self, name)
-			
 		if name not in self._children:
 			if not self._modifiable_children:
 				raise AttributeError, "object has no attribute '%s'" % (name,)
