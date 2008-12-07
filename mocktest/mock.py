@@ -47,7 +47,7 @@ class Mock(object):
 					methods = _polymorphic_spec
 				else:
 					spec = _polymorphic_spec
-
+		
 		self._parent = parent
 		self._name = name
 		self._children = self._make_children(children=children, methods=methods, spec=spec)
@@ -55,6 +55,8 @@ class Mock(object):
 		self._side_effect = action
 		
 		self.reset()
+		
+		self.__initted = True
 	
 	_all_expectations = None
 	@classmethod
@@ -84,10 +86,7 @@ class Mock(object):
 
 	def __reset_mock(self, obj):
 		if isinstance(obj, Mock):
-			print "resetting %r" % (obj,)
 			obj.reset()
-		else:
-			print "NOT resetting %r" % (obj,)
 			
 	def reset(self):
 		self.call_args = None
@@ -109,11 +108,6 @@ class Mock(object):
 		
 	return_value = property(__get_return_value, __set_return_value)
 	
-	# def __setattr__(self, attr, val):
-	# 	#TODO: add to children
-	# 	
-	# 	pass
-
 	def __call__(self, *args, **kwargs):
 		self.call_count += 1
 		self.call_args = (args, kwargs)
@@ -190,20 +184,38 @@ class Mock(object):
 		if not isinstance(children, dict):
 			raise TypeError, "expected children to be a dict, got '%s'" % (type(children),)
 
-		print "children: %r" % (children,)
 		return children
 		
 	def _make_child(self, name, return_value=DEFAULT):
 		return Mock(parent=self, name=name, return_value=return_value)
-		
+
+	def __has_attr(self, attr):
+		try:
+			a = object.__getattribute__(self, attr)
+			return True
+		except AttributeError:
+			return False
+
+	def __setattr__(self, attr, val):
+		if self.__has_attr(attr) or not self.__has_attr('_Mock__initted'):
+			object.__setattr__(self, attr, val)
+			return
+
+		if not self._modifiable_children:
+			raise AttributeError, "Cannot set attribute %r (to %r) on mock '%s'" % (attr, val, self)
+		self._children[attr] = val
+
 	def __getattr__(self, name):
 		def _new():
 			self._children[name] = self._make_child(name)
 			return self._children[name]
+
+		if not self.__has_attr('_children'):
+			return object.__getattribute__(self, name)
 			
 		if name not in self._children:
 			if not self._modifiable_children:
-				raise AttributeError("object has no attribute '%s'" % name)
+				raise AttributeError, "object has no attribute '%s'" % (name,)
 			child = _new()
 		else:
 			# child already exists

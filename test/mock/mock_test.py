@@ -97,6 +97,19 @@ class MockTest(TestCase):
 		mock = Mock(children={'foo':'bar'})
 		self.assertRaises(AttributeError, lambda: mock.new_child)
 	
+	def testChildrenCanBeAddedLater(self):
+		mock = Mock()
+		mock.foo = 1
+		mock.bar = 2
+		self.assertEqual(mock._children, {'foo':1, 'bar':2})
+	
+	def testChildrenCantBeAddedLaterIfTheyAreGivenInInit(self):
+		mock = Mock(children={'foo':1, 'bar':2})
+		def set_child():
+			mock.child_a = 1
+			print "set child_a"
+		self.assertRaises(AttributeError, set_child)
+	
 	def testSideEffect(self):
 		mock = Mock()
 		def effect():
@@ -133,7 +146,7 @@ class MockTest(TestCase):
 		mock = Mock(action=return_foo, return_value='bar')
 		self.assertEqual(mock(), 'bar',
 		                 "return value not used")
-		
+	
 	def testReset(self):
 		parent = Mock()
 		methods = ["something"]
@@ -141,11 +154,8 @@ class MockTest(TestCase):
 		# mock(sentinel.Something, something=sentinel.SomethingElse)
 		something = mock.something
 		
-		self.assertEquals(mock.something, something) ##
-		self.assertEquals(mock._children, {'something': something}) ##
 		mock.something()
-		self.assertEquals(mock._children, {'something': something}) ##
-		mock.side_effect = sentinel.SideEffect
+		mock._side_effect = sentinel.SideEffect
 		return_value = mock.return_value
 		return_value()
 		
@@ -161,13 +171,13 @@ class MockTest(TestCase):
 		self.assertEquals(mock.method_calls, [], 
 						  "method_calls not initialised correctly")
 		
-		self.assertEquals(mock.side_effect, sentinel.SideEffect,
+		self.assertEquals(mock._side_effect, sentinel.SideEffect,
 						  "side_effect incorrectly reset")
 		self.assertEquals(mock.return_value, return_value,
 						  "return_value incorrectly reset")
 		self.assertFalse(return_value.called, "return value mock not reset")
-		self.assertEquals(mock._children, {'something': something})#, 
-						  # "children reset incorrectly")
+		self.assertEquals(mock._children, {'something': something}, 
+						  "children reset incorrectly")
 		self.assertEquals(mock.something, something,
 						  "children incorrectly cleared")
 		self.assertFalse(mock.something.called, "child not reset")
