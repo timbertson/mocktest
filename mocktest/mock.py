@@ -34,17 +34,24 @@ class Mock(object):
 				 frozen=None):
 
 		if _polymorphic_spec is not None:
-			# depending on the type of the first argument, use it as name / methods / spec
+			# depending on the type of the first argument, use it as:
+			# dict -> methods
+			# list -> methods
+			# str -> name
+			# everyhing else -> spec
 			polymorphic_type = type(_polymorphic_spec)
+			polymorphic_err = ValueError("type of first argument (%s) conflicts with a provided keyword argument" % (polymorphic_type,))
 			if polymorphic_type == str:
 				if name is not None:
-					raise RuntimeError, "first argument looks like a name, but name was also provided"
+					raise ValueError, "first argument looks like a name, but name was also provided"
 				name = _polymorphic_spec
 			else:
-				if not (methods is spec is children is None):
-					raise TypeError, "type of first argument (%s) implies  methods / children / spec, "\
-					                 "but one of these was also provided as a keyword argument" % (type(_polymorphic_spec),)
+				if (methods is not None or children is not None) and spec is not None:
+					# spec and (methods OR chilren) collide
+					raise polymorphic_err
 				if polymorphic_type == dict or polymorphic_type == list:
+					if methods is not None:
+						raise polymorphic_err
 					methods = _polymorphic_spec
 				else:
 					spec = _polymorphic_spec
@@ -61,6 +68,7 @@ class Mock(object):
 		
 		self.__initted = True
 	
+	# mockExpecation integration
 	_all_expectations = None
 	@classmethod
 	def _setup(cls):
@@ -76,9 +84,6 @@ class Mock(object):
 		return MockMatcher(self)
 	called = property(__called_matcher)
 	
-	def __str__(self):
-		return str(self._name) if self._name is not None else "unknown-mock"
-
 	def __expect_call_matcher(self):
 		if self.__class__._all_expectations is None:
 			raise RuntimeError, "Mock._setup has not been called. Make sure you are inheriting from mock.TestCase, not unittest.TestCase"
@@ -86,6 +91,9 @@ class Mock(object):
 		self.__class__._all_expectations.append(matcher)
 		return matcher
 	is_expected = property(__expect_call_matcher)
+
+	def __str__(self):
+		return str(self._name) if self._name is not None else "unknown-mock"
 
 	def __reset_mock(self, obj):
 		if isinstance(obj, Mock):
@@ -102,7 +110,6 @@ class Mock(object):
 
 		self._children = self._orig_children.__class__(self._orig_children) # creates a copy, in both list & dict cases
 		print "children is now %r" % (self._children,)
-		
 	
 	def __get_return_value(self):
 		if self._return_value is DEFAULT:
@@ -111,7 +118,6 @@ class Mock(object):
 	
 	def __set_return_value(self, value):
 		self._return_value = value
-		
 	return_value = property(__get_return_value, __set_return_value)
 	
 	def __call__(self, *args, **kwargs):
@@ -132,65 +138,58 @@ class Mock(object):
 		if self._side_effect is not None:
 			side_effect_ret_val = self._side_effect(*args, **kwargs)
 			if isinstance(self._return_value,Mock):
+				# if return_value is just a mock, use this instead:
 				retval = side_effect_ret_val
 		
 		return retval
 	
 	def _make_children(self, children = None, spec = None, methods = None):
-		"""
-		return children (as a dict) given any of the three types of information
-
-		* children (list) -> a dict is returned where all values are set to DEFAULT
-		* children (dict) -> returned as-is
-
-		* methods (list) -> as for a list of children
-		* methods (dict) -> returns a dict, where values are Mock
-		                    objects with their return_values set appropriately
-		
-		* spec -> as for a list of children, except the keys are set to all available
-		          methods on 'spec'
-		
-		If one argument is given, self._modifiable_children is set to False
-		If no arguments are given, self._modifiable_children is set to True and the
-		empty dict is returned.
-		If more than one argument is given, a RuntimeError is raised
-		"""
-		specified = filter(lambda x: x is not None, (children, spec, methods))
-		if len(specified) == 0:
+		if methods is children is spec is None:
+			# none provided
 			self._modifiable_children = True
 			return {}
-		if len(specified) != 1:
-			raise RuntimeError, "only one of (spec, children, methods) can be set on a mock object"
+
+		if (methods is not None or children is not None) and spec is not None:
+			raise ValueError, "you cannot provide both spec and methods/children"
+		
+		# get rid of Nones, and ensure types are okay
+		methods, children = [[] if x is None else x for x in (methods, children)]
+		for x in (methods, children):
+			if not (isinstance(x, list) or isinstance(x, dict)):
+				raise TypeError, "expecting methods/children to be a list or dict, it is a %s" % (x.__class__,)
 		
 		self._modifiable_children = False
 		
+		child_hash = {}
+		
 		# grab methods from a spec object
 		if spec is not None:
-			methods = [member for member in dir(spec) if not 
-					   (member.startswith('__') and	 member.endswith('__'))]
+			children = [member for member in dir(spec) if not 
+				(member.startswith('__') and member.endswith('__'))]
 
+		def assert_uniq(name):
+			if name in child_hash:
+				raise ValueError, "%s specified as both method and child attribute"
+
+		# children
 		if isinstance(children, list):
-			# a list of children is the same as a list of methods
-			methods = children
-			children = None
-			
-		# if methods don't have return values, give them some:
-		if methods is not None:
-			children = {}
-			if isinstance(methods, list):
-				for name in methods:
-					children[name] = DEFAULT
-			elif isinstance(methods, dict):
-				# populate methods as mocks with return values
-				for name, retval in methods.items():
-					children[name] = self._make_child(name, retval)
-			else:
-				raise "expected methods to be a list or dict, got '%s'" % (type(methods),)
+			for name in children:
+				assert_uniq(name)
+				child_hash[name] = DEFAULT
+		else:
+			child_hash = children
 
-		if not isinstance(children, dict):
-			raise TypeError, "expected children to be a dict, got '%s'" % (type(children),)
+		# methods
+		if isinstance(methods, list):
+			for name in methods:
+				assert_uniq(name)
+				child_hash[name] = DEFAULT
+		else:
+			for name, retval in methods.items():
+				assert_uniq(name)
+				child_hash[name] = self._make_child(name, retval)
 
-		return children
+		return child_hash
 		
 	def _make_child(self, name, return_value=DEFAULT):
 		return Mock(parent=self, name=name, return_value=return_value)

@@ -66,21 +66,23 @@ class MockTest(TestCase):
 		self.assertRaises(Exception, lambda: mock.b)
 	
 	def testPolymorphFailsWhenConflictingOptionsProvidedInConstructor(self):
-		# a hash or array would normally be used as _methods, but it's ambiguous when any of
+		# a hash or array would normally be used as _methods, but it's ambiguous when
 		# - methods
 		# - spec
-		# - children
 		# are provided as well
-		self.assertRaises(TypeError, lambda: Mock({'foo':'bar'}, methods=['a','b']))
-		self.assertRaises(TypeError, lambda: Mock({'foo':'bar'}, methods={'a':'b'}))
-		self.assertRaises(TypeError, lambda: Mock({'foo':'bar'}, spec=object()))
-		self.assertRaises(TypeError, lambda: Mock({'foo':'bar'}, children={}))
 		
-
-		self.assertRaises(TypeError, lambda: Mock(['foo','bar'], methods=['a','b']))
-		self.assertRaises(TypeError, lambda: Mock(['foo','bar'], methods={'a':'b'}))
-		self.assertRaises(TypeError, lambda: Mock(['foo','bar'], spec=object()))
-		self.assertRaises(TypeError, lambda: Mock(['foo','bar'], children={}))
+		# methods vs methods
+		self.assertRaises(ValueError, lambda: Mock({'foo':'bar'}, methods=['a','b']))
+		
+		# spec vs methods / children
+		self.assertRaises(ValueError, lambda: Mock(object(), methods={'a':'b'}))
+		self.assertRaises(ValueError, lambda: Mock(object(), children={'a':'b'}))
+		
+		# methods vs spec
+		self.assertRaises(ValueError, lambda: Mock({'foo':'bar'}, spec=object()))
+		
+		#name vs name
+		self.assertRaises(ValueError, lambda: Mock("name", name="bar"))
 	
 	def testChildrenMustBeADictOrList(self):
 		mock = Mock(children=['foo','bar'])
@@ -119,8 +121,38 @@ class MockTest(TestCase):
 		def set_child():
 			mock.child_a = 1
 			print "set child_a"
-		self.assertRaises(AttributeError, set_child)		
+		self.assertRaises(AttributeError, set_child)
 	
+	def testChildrenAndMethodsCanCoexist(self):
+		# both as dicts
+		mock = Mock(children={'a':'a'}, methods={'b':'b'})
+		self.assertEqual(mock.a, 'a')
+		self.assertEqual(mock.b(), 'b')
+
+		mock = Mock({'b':'b'}, children={'a':'a'})
+		self.assertEqual(mock.a, 'a')
+		self.assertEqual(mock.b(), 'b')
+		
+		# both as arrays
+		mock = Mock(['b'], children=['a'])
+		self.assertEqual(sorted(mock._children.keys()), ['a','b'])
+		
+		# children as dict, methods as array
+		mock = Mock(['b'], children={'a':'a'})
+		self.assertEqual(mock.a, 'a')
+		mock.b() # should not raise
+		
+		# children as array, method as dict
+		mock = Mock({'b':'b'}, children=['a'])
+		mock.a, # should not raise
+		self.assertEqual(mock.b(), 'b')
+	
+	def testChildrenAndMethodsNeedToBeUnique(self):
+		self.assertRaises(ValueError, lambda: Mock(children=['a'],      methods=['a']))
+		self.assertRaises(ValueError, lambda: Mock(children={'a':None}, methods={'a':None}))
+		self.assertRaises(ValueError, lambda: Mock(children=['a'],      methods={'a':None}))
+		self.assertRaises(ValueError, lambda: Mock(children={'a':None}, methods=['a']))
+
 	def testSideEffect(self):
 		mock = Mock()
 		def effect():
