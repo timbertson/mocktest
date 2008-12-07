@@ -56,7 +56,7 @@ class MockTest(TestCase):
 		self.assertEqual(mock._name, "li'l mocky")
 	
 	def testSpecObjectInConstructor(self):
-		# should set _spec if the first arg in a constructor is not an array, hash or string
+		# should set _spec if the first arg in a constructor is not an array, dict or string
 		class MyCls:
 			def a(self):
 				return "foo"
@@ -66,11 +66,6 @@ class MockTest(TestCase):
 		self.assertRaises(Exception, lambda: mock.b)
 	
 	def testPolymorphFailsWhenConflictingOptionsProvidedInConstructor(self):
-		# a hash or array would normally be used as _methods, but it's ambiguous when
-		# - methods
-		# - spec
-		# are provided as well
-		
 		# methods vs methods
 		self.assertRaises(ValueError, lambda: Mock({'foo':'bar'}, methods=['a','b']))
 		

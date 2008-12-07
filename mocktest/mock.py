@@ -108,7 +108,7 @@ class Mock(object):
 			self.__reset_mock(child)
 		self.__reset_mock(self._return_value)
 
-		self._children = self._orig_children.__class__(self._orig_children) # creates a copy, in both list & dict cases
+		self._children = self._orig_children.copy()
 	
 	def __get_return_value(self):
 		if self._return_value is DEFAULT:
