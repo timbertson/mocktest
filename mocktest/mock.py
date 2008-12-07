@@ -30,10 +30,11 @@ DEFAULT = object()
 class Mock(object):
 	def __init__(self, _polymorphic_spec=None, name=None,
 				 methods=None, spec=None, action=None,
-				 children=None, return_value=DEFAULT, parent=None):
+				 children=None, return_value=DEFAULT, parent=None,
+				 frozen=None):
 
 		if _polymorphic_spec is not None:
-			# depending on the type of the first argument, us it as name / methods / spec
+			# depending on the type of the first argument, use it as name / methods / spec
 			polymorphic_type = type(_polymorphic_spec)
 			if polymorphic_type == str:
 				if name is not None:
@@ -50,7 +51,9 @@ class Mock(object):
 		
 		self._parent = parent
 		self._name = name
-		self._children = self._make_children(children=children, methods=methods, spec=spec)
+		self._orig_children = self._children = self._make_children(children=children, methods=methods, spec=spec)
+		if frozen is not None:
+			self._modifiable_children = not frozen
 		self._return_value = return_value
 		self._side_effect = action
 		
@@ -96,6 +99,9 @@ class Mock(object):
 		for child in self._children.itervalues():
 			self.__reset_mock(child)
 		self.__reset_mock(self._return_value)
+
+		self._children = self._orig_children.__class__(self._orig_children) # creates a copy, in both list & dict cases
+		print "children is now %r" % (self._children,)
 		
 	
 	def __get_return_value(self):

@@ -110,6 +110,17 @@ class MockTest(TestCase):
 			print "set child_a"
 		self.assertRaises(AttributeError, set_child)
 	
+	def testFrozenCanBeOverriddenInConstructor(self):
+		mock = Mock(children={'foo':1, 'bar':2},frozen=False)
+		mock.child_a = 'baz'
+		self.assertEqual(mock.child_a, 'baz')
+
+		mock = Mock(frozen=True)
+		def set_child():
+			mock.child_a = 1
+			print "set child_a"
+		self.assertRaises(AttributeError, set_child)		
+	
 	def testSideEffect(self):
 		mock = Mock()
 		def effect():
@@ -176,12 +187,17 @@ class MockTest(TestCase):
 		self.assertEquals(mock.return_value, return_value,
 						  "return_value incorrectly reset")
 		self.assertFalse(return_value.called, "return value mock not reset")
-		self.assertEquals(mock._children, {'something': something}, 
+		self.assertEquals(mock._children.keys(), ['something'], 
 						  "children reset incorrectly")
-		self.assertEquals(mock.something, something,
-						  "children incorrectly cleared")
+		self.assertNotEquals(mock.something, something,
+						  "children was not cleared")
 		self.assertFalse(mock.something.called, "child not reset")
-		
+	
+	def testResetRemovesAddedChildren(self):
+		mock = Mock()
+		mock.a = 1
+		mock.reset()
+		self.assertTrue(mock._children == {})
 	
 	def testResetOnlyPropagatesToMockChildren(self):
 		a = Mock()
