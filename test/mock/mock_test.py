@@ -175,8 +175,13 @@ class MockTest(TestCase):
 		def return_foo():
 			return "foo"
 		mock = Mock(action=return_foo)
-		self.assertEqual(mock(), 'foo',
-		                "side effect return value not used")
+		self.assertEqual(mock(), 'foo')
+	
+	def testSideEffectReturnValUsedEvenWhenItIsNone(self):
+		self.assertEqual(Mock(action=lambda: None)(), None)
+	
+	def testDefaultReturnShouldBeAMock(self):
+		self.assertTrue(isinstance(Mock()(), Mock))
 
 	def testSideEffectReturnNotUsedWhenReturnValueSpecified(self):
 		def return_foo():

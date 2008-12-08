@@ -25,29 +25,19 @@ from mockmatcher import MockMatcher
 
 DEFAULT = object()
 
-#TODO: you should be able to use both children and methods
-
 class Mock(object):
-	# these need to exist here so that __getattr__ / __setattr__ does
-	# not get into an infinite loop when they are first set
-	_children = None
-	_name = None
-	_modifiable_children = None
-	_children = None
-	_orig_children = None
-	_side_effect = None
-	_parent = None
-	_return_value = None
-	call_args = None
-	call_count = None
-	call_args_list = None
-	method_calls = None
-	
+	def __set(self, **kwargs):
+		"""
+		self.__set(foo=bar) is just like self.foo='bar', except
+		it bypasses Mock's __setattr__ magic
+		"""
+		for attr, val in kwargs.items():
+			object.__setattr__(self, attr, val)
+
 	def __init__(self, _polymorphic_spec=None, name=None,
 				 methods=None, spec=None, action=None,
 				 children=None, return_value=DEFAULT, parent=None,
 				 frozen=None):
-
 		if _polymorphic_spec is not None:
 			# depending on the type of the first argument, use it as:
 			# dict -> methods
@@ -71,13 +61,15 @@ class Mock(object):
 				else:
 					spec = _polymorphic_spec
 		
-		self._parent = parent
-		self._name = name
-		self._orig_children = self._children = self._make_children(children=children, methods=methods, spec=spec)
+		self.__set(_parent = parent)
+		self.__set(_name = name)
+		children = self._make_children(children=children, methods=methods, spec=spec)
+		self.__set(_orig_children = children, _children = children)
 		if frozen is not None:
-			self._modifiable_children = not frozen
-		self._return_value = return_value
-		self._side_effect = action
+			self.__set(_modifiable_children = not frozen)
+		self.__set_return_value(return_value)
+		self.__set(_return_value_provided = (return_value is not DEFAULT))
+		self.__set(_side_effect = action)
 		
 		self.reset()
 		
@@ -113,23 +105,24 @@ class Mock(object):
 			obj.reset()
 			
 	def reset(self):
-		self.call_args = None
-		self.call_count = 0
-		self.call_args_list = []
-		self.method_calls = []
+		self.__set(call_args = None)
+		self.__set(call_count = 0)
+		self.__set(call_args_list = [])
+		self.__set(method_calls = [])
 		for child in self._children.itervalues():
 			self.__reset_mock(child)
 		self.__reset_mock(self._return_value)
 
-		self._children = self._orig_children.copy()
+		self.__set(_children = self._orig_children.copy())
 	
 	def __get_return_value(self):
 		if self._return_value is DEFAULT:
-			self._return_value = Mock()
+			self.__set(_return_value = Mock())
 		return self._return_value
 	
 	def __set_return_value(self, value):
-		self._return_value = value
+		self.__set(_return_value = value)
+		self.__set(_return_value_provided = True)
 	return_value = property(__get_return_value, __set_return_value)
 	
 	def __call__(self, *args, **kwargs):
@@ -149,16 +142,17 @@ class Mock(object):
 		retval = self.return_value
 		if self._side_effect is not None:
 			side_effect_ret_val = self._side_effect(*args, **kwargs)
-			if isinstance(self._return_value,Mock):
-				# if return_value is just a mock, use this instead:
-				retval = side_effect_ret_val
-		
+			retval = side_effect_ret_val
+
+		if self._return_value_provided:
+			# make sure the side_effect didn't get precedence
+			retval = self._return_value
 		return retval
 	
 	def _make_children(self, children = None, spec = None, methods = None):
 		if methods is children is spec is None:
 			# none provided
-			self._modifiable_children = True
+			self.__set(_modifiable_children = True)
 			return {}
 
 		if (methods is not None or children is not None) and spec is not None:
@@ -170,7 +164,7 @@ class Mock(object):
 			if not (isinstance(x, list) or isinstance(x, dict)):
 				raise TypeError, "expecting methods/children to be a list or dict, it is a %s" % (x.__class__,)
 		
-		self._modifiable_children = False
+		self.__set(_modifiable_children = False)
 		
 		child_hash = {}
 		
@@ -214,7 +208,7 @@ class Mock(object):
 			return False
 
 	def __setattr__(self, attr, val):
-		if self.__has_attr(attr):# or not self.__has_attr('_Mock__initted'):
+		if self.__has_attr(attr):
 			object.__setattr__(self, attr, val)
 			return
 
