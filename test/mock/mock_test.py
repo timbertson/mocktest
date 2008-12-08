@@ -176,6 +176,13 @@ class MockTest(TestCase):
 			return "foo"
 		mock = Mock(action=return_foo)
 		self.assertEqual(mock(), 'foo')
+
+	def testSideEffectCanChangeMockReturnValue(self):
+		mock = Mock()
+		def modify_it():
+			mock.return_value = 'foo'
+		mock._side_effect = modify_it
+		self.assertEqual(mock(), 'foo')
 	
 	def testSideEffectReturnValUsedEvenWhenItIsNone(self):
 		self.assertEqual(Mock(action=lambda: None)(), None)
@@ -338,4 +345,3 @@ class MockTest(TestCase):
 			
 		testAttributes(Mock(spec=Something))
 		testAttributes(Mock(spec=Something()))
-		
