@@ -1,7 +1,5 @@
 import unittest
-import sys
-sys.path.append('..')
-
+import helper
 from mocktest import Mock
 from mocktest import TestCase
 
