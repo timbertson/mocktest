@@ -217,6 +217,11 @@ class MockWrapper(RealSetter):
 		self.action = val
 		return self
 
+	def raising(self, ex):
+		def mock_raise():
+			raise ex
+		return self.with_action(mock_raise)
+
 	def with_spec(self, specitem):
 		children = [member for member in dir(spec) if not 
 			(member.startswith('__') and member.endswith('__'))]
