@@ -5,8 +5,9 @@ class MockMatcher(object):
 	_cond_args = None
 	_cond_description = None
 	
-	def _mock_get(self, attr):
-		return self._mock._mock_get(attr)
+	def _call_list(self):
+		return self._mock._mock_get('call_list')
+	call_list = property(_call_list)
 	
 	def __init__(self, mock_obj):
 		self._mock = mock_obj
@@ -72,7 +73,7 @@ class MockMatcher(object):
 		"""
 		if not self._matches():
 			raise AssertionError, self
-		return [self._clean_args(call) for call in self._mock_get('call_list') if self._args_match(call)]
+		return [self._clean_args(call) for call in self.call_list if self._args_match(call)]
 	
 	def get_args(self):
 		"""
@@ -127,7 +128,7 @@ class MockMatcher(object):
 		given the multiplicities and argument checks it has been
 		configured with
 		"""
-		call_list = self._mock_get('call_list')
+		call_list = self.call_list
 		if self._cond_args is not None:
 			call_list = filter(self._args_match, call_list)
 		return self._multiplicities_match(len(call_list))
@@ -227,7 +228,7 @@ class MockMatcher(object):
 		return desc
 	
 	def describe_reality(self):
-		call_list = self._mock_get('call_list')
+		call_list = self.call_list
 		call_count = len(call_list)
 		desc = "%s calls" % (call_count,)
 		if call_count > 0:

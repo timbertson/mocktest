@@ -1,7 +1,9 @@
 __all__ = (
-	'mock',
+	'raw_mock',
 	'mock_wrapper',
 	'mock_on',
+	'setup',
+	'teardown',
 	'__version__'
 )
 
@@ -12,8 +14,20 @@ from mockmatcher import MockMatcher
 
 DEFAULT = object()
 
+def setup():
+	MockWrapper._setup()
+
+def teardown():
+	MockWrapper._teardown()
+
+
+def expect(mock_wrapper):
+	if not isinstance(mock_wrapper, MockWrapper):
+		raise TypeError("Expected %s, got %s" % (MockWrapper, mock_wrapper.__class__))
+	return mock_wrapper.is_expected
+
 # mocking methods
-def mock(name = None):
+def raw_mock(name = None):
 	"""a silent mock object. use mock_of(silent_mock) to set expectations, etc"""
 	kwargs = {}
 	if name is not None:
@@ -22,12 +36,14 @@ def mock(name = None):
 		kwargs['name'] = name
 	return SilentMock(**kwargs)
 
-def mock_wrapper(silent_mock):
+def mock_wrapper(silent_mock = None):
 	"""
 	return a mock wrapper for the given silent mock
 	you can use the mock wrapper to set expectations or get invocation details
 	for a slent mock
 	"""
+	if silent_mock is None:
+		silent_mock = SilentMock()
 	if isinstance(silent_mock, SilentMock):
 		return MockWrapper(silent_mock)
 	raise TypeError("expected a SilentMock instance, got %s" % (mock_.__class__,))
@@ -96,6 +112,9 @@ class SilentMock(RealSetter):
 	def __call__(self, *args, **kwargs):
 		self._mock_get('call_list').append((args, kwargs))
 		retval = self._mock_get('return_value')
+		if retval is DEFAULT:
+			self._mock_set(return_value = SilentMock(name="return value for (%s)" % (self._mock_get('name'))))
+			retval = self._mock_get('return_value')
 
 		if self._mock_get('action') is not None:
 			side_effect_ret_val = self._mock_get('action')(*args, **kwargs)
@@ -161,7 +180,11 @@ class MockWrapper(RealSetter):
 	
 	def _get(self, attr):
 		return self._mock._mock_get(attr)
-		
+	
+	def _get_mock(self):
+		return self._mock
+	mock = property(_get_mock)
+			
 	# mockExpecation integration
 	_all_expectations = None
 	@classmethod
@@ -176,7 +199,7 @@ class MockWrapper(RealSetter):
 		AnchoredMock._reset_all()
 
 	def __called_matcher(self):
-		return MockMatcher(self)
+		return MockMatcher(self._mock)
 	called = property(__called_matcher)
 	
 	def __expect_call_on(self, obj):
@@ -198,7 +221,7 @@ class MockWrapper(RealSetter):
 		self._mock._mock_set(**{attr:val})
 
 	def __getattr__(self, attr):
-		self._mock._mock_get(attr)
+		return self._mock._mock_get(attr)
 
 	def __reset_mock(self, obj):
 		if isinstance(obj, self.__class__):
