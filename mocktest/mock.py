@@ -2,8 +2,6 @@ __all__ = (
 	'raw_mock',
 	'mock_wrapper',
 	'mock_on',
-	'setup',
-	'teardown',
 	'__version__'
 )
 
@@ -14,10 +12,10 @@ from mockmatcher import MockMatcher
 
 DEFAULT = object()
 
-def setup():
+def _setup():
 	MockWrapper._setup()
 
-def teardown():
+def _teardown():
 	MockWrapper._teardown()
 
 

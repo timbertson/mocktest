@@ -69,10 +69,10 @@ class TestCase(unittest.TestCase):
 		self.tearDown = _compose(self.__teardown, subclass_teardown)
 
 	def __setup(self):
-		mock.setup()
+		mock._setup()
 	
 	def __teardown(self):
-		mock.teardown()
+		mock._teardown()
 
 	def __assert_not_callable(self, expr):
 		if callable(expr):
