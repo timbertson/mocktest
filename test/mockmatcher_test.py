@@ -1,7 +1,6 @@
 import unittest
 import helper
-from mocktest import Mock
-from mocktest import TestCase
+from mocktest import *
 
 class TestPySpec(unittest.TestCase):
 	def test_should_track_calls(self):

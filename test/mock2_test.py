@@ -15,12 +15,14 @@ class TestMock2(TestCase):
 		self.assertTrue(os.command("ls ~") == 'foo')
 		self.assertTrue(os.path() == 'foo2')
 		
-		mock_on(os).system.is_expected.with_args('ls ~')
+		mockos.system.is_expected.with_args('ls ~')
 		os.system('ls ~')
 		
-		mock_on(os).expects('system').with_args('ls /')
-		os.system('ls ~')
+		mockos.expects('system').with_args('ls /')
+		os.system('ls /')
 		
+		mockos.system.action = lambda: 'result'
+		self.assertFalse(os.system.action == mockos.system.action)
 		
 # what's new?
 # resets over tests

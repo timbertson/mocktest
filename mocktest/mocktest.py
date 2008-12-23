@@ -6,7 +6,7 @@ __all__ = (
 import unittest
 import re
 import sys
-from mock import Mock, MockWrapper
+import mock
 
 def _compose(hook, func):
 	if hook is None:
@@ -69,12 +69,10 @@ class TestCase(unittest.TestCase):
 		self.tearDown = _compose(self.__teardown, subclass_teardown)
 
 	def __setup(self):
-		Mock._setup()
-		MockWrapper._setup()
+		mock.setup()
 	
 	def __teardown(self):
-		Mock._teardown()
-		MockWrapper._teardown()
+		mock.teardown()
 
 	def __assert_not_callable(self, expr):
 		if callable(expr):
