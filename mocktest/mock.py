@@ -58,6 +58,9 @@ class RealSetter(object):
 	def _real_set(self, **kwargs):
 		for k,v in kwargs.items():
 			object.__setattr__(self, k, v)
+	
+	def _real_get(self, attr):
+		return object.__getattribute__(self, attr)
 
 class SilentMock(RealSetter):
 	"""a mock object that minimises namespace collision"""
@@ -65,7 +68,8 @@ class SilentMock(RealSetter):
 		self._real_set(_mock_dict = {
 			'action': None,
 			'return_value':DEFAULT,
-			'_orig_children':{},
+			'attrs':{},
+			'_children':{},
 			'_modifiable_children':True,
 			'name':'unnamed mock',
 			'_return_value_provided':False,
@@ -75,56 +79,75 @@ class SilentMock(RealSetter):
 	
 	def _mock_reset(self):
 		resets = {
-			'attrs':{},
 			'call_list':[],
-			'_children':self._mock_get('_orig_children'),
 		}
 		for key,val in resets.items():
 			self._mock_dict[key] = val
-
+		print self._mock_get('call_list')
+	
 	def _mock_set(self, **kwargs):
 		for attr, val in kwargs.items():
+			print "setting %s on %r to %s" % (attr, self, val)
 			if not attr in self._mock_dict:
 				raise KeyError, "no such mock attribute: %s" % (attr,)
 			self._mock_dict[attr] = val
 			hookname = '_mock_set_%s_hook' % (attr,)
 			try:
-				object.__getattr__(self, hookname)(val)
+				print "trying hook: %s" % hookname
+				self._real_get(hookname)(val)
+				print "%s worked!" % hookname
 			except AttributeError: pass
 
 	def _mock_get(self, attr):
 		return self._mock_dict[attr]
 	
 	def _mock_del(self, attr):
-		self._mock_dict.delattr(attr)
 		hookname = '_mock_del_%s_hook' % (attr,)
-		if hasattr(self, hookname):
-			getattr(self, hookname)()
+		try:
+			print "trying hook: %s" % hookname
+			self._real_get(hookname)()
+			print "%s worked!" % hookname
+		except AttributeError: pass
 	
-	def _mock_set_return_val_hook(self, val):
-		self._set(_return_value_provided=True)
+	# hooks on mock attributes
+	def _mock_set_return_value_hook(self, val):
+		print "setting return value provided = true"
+		self._mock_set(_return_value_provided=True)
 	
-	def _mock_del_return_val_hook(self):
-		self._set(_return_value_provided=False)
+	def _mock_del_return_value_hook(self):
+		print "setting return value provided = false"
+		self._mock_set(return_value=DEFAULT)
+		self._mock_set(_return_value_provided=False)
 	
 	def __call__(self, *args, **kwargs):
 		self._mock_get('call_list').append((args, kwargs))
-		retval = self._mock_get('return_value')
+		retval_done = False
+		if self._mock_get('action') is not None:
+			side_effect_ret_val = self._mock_get('action')(*args, **kwargs)
+			print "return provided = %r" % (self._mock_get('_return_value_provided'),)
+			if not self._mock_get('_return_value_provided'):
+				retval = side_effect_ret_val
+				retval_done = True
+				print "retval side effected to %s" % (retval)
+
+		if not retval_done:
+			print "retval set to mocks return_value"
+			retval = self._mock_get('return_value')
+
 		if retval is DEFAULT:
 			self._mock_set(return_value = SilentMock(name="return value for (%s)" % (self._mock_get('name'))))
 			retval = self._mock_get('return_value')
 
-		if self._mock_get('action') is not None:
-			side_effect_ret_val = self._mock_get('action')(*args, **kwargs)
-			retval = side_effect_ret_val
-
-		if self._mock_get('_return_value_provided'):
-			# make sure the side_effect didn't get precedence
-			retval = self._return_value
 		return retval
-	
+
+	def __fail_if_no_child_allowed(self, name):
+		if name not in self._mock_get('_children'):
+			if not self._mock_get('_modifiable_children'):
+				raise AttributeError, "object (%s) has no attribute '%s'" % (self, name,)
+
 	def __setattr__(self, attr, val):
-		self._mock_get('attrs')[attr] = val
+		self.__fail_if_no_child_allowed(attr)
+		self._mock_get('_children')[attr] = val
 
 	def __getattribute__(self, name):
 		if name.startswith('_'):
@@ -133,13 +156,13 @@ class SilentMock(RealSetter):
 			except AttributeError:
 				pass
 			
+		print "getting pretend attr %s" % name
 		def _new():
-			self._mock_get('_children')[name] = self._mock_make_child(name)
+			self._mock_get('_children')[name] = SilentMock(name=name)
 			return self._mock_get('_children')[name]
 
 		if name not in self._mock_get('_children'):
-			if not self._mock_get('_modifiable_children'):
-				raise AttributeError, "object has no attribute '%s'" % (name,)
+			self.__fail_if_no_child_allowed(name)
 			child = _new()
 		else:
 			# child already exists
@@ -151,11 +174,6 @@ class SilentMock(RealSetter):
 	def __str__(self):
 		return 'mock: ' + str(self._mock_get('name'))
 
-	def _mock_make_child(self, name, return_value=DEFAULT):
-		return SilentMock(name=name)
-
-
-
 class MockWrapper(RealSetter):
 	"""
 	a mock object wrapper for use in test cases
@@ -165,7 +183,9 @@ class MockWrapper(RealSetter):
 	"""
 	def __init__(self, wrapped_mock = None):
 		if self.__class__._all_expectations is None:
-			raise RuntimeError, "%s._setup has not been called. Make sure you are inheriting from mock.TestCase, not unittest.TestCase" % (self.__class__,)
+			raise RuntimeError("%s._setup has not been called. " +
+				"Make sure you are inheriting from mock.TestCase, " +
+				"not unittest.TestCase" % (self.__class__,))
 		if wrapped_mock is None:
 			wrapped_mock = SilentMock()
 		if not isinstance(wrapped_mock, SilentMock):
@@ -220,11 +240,14 @@ class MockWrapper(RealSetter):
 
 	def __getattr__(self, attr):
 		return self._mock._mock_get(attr)
-
-	def __reset_mock(self, obj):
-		if isinstance(obj, self.__class__):
-			obj._mock_reset()
+		
+	def __delattr__(self, attr):
+		self._mock._mock_del(attr)
 	
+	def reset(self):
+		print "resetting..."
+		self.mock._mock_reset()
+		
 	# convenience methods for dsl-like chaining
 	def returning(self, val):
 		self.return_value = val
@@ -243,7 +266,7 @@ class MockWrapper(RealSetter):
 			raise ex
 		return self.with_action(mock_raise)
 
-	def with_spec(self, specitem):
+	def with_spec(self, spec):
 		children = [member for member in dir(spec) if not 
 			(member.startswith('__') and member.endswith('__'))]
 		return self.with_children(*children)
@@ -260,19 +283,21 @@ class MockWrapper(RealSetter):
 	
 	def _with_children(self, *children, **kwchildren):
 		"""internally add children, but don't freeze the mock"""
+		print "adding children: %r and %r" % (children, kwchildren)
 		for child in children:
-			getattr(self, child)
+			getattr(self.mock, child)
 		for child, val in kwchildren.items():
-			setattr(self, child, val)
-		return self
-	
-	def with_items(self, **kwargs):
-		for k,v in kwargs.items():
-			self[k] = v
+			print "setting %s=%r" % (child, val)
+			setattr(self.mock, child, val)
+		print self._children
 		return self
 	
 	def frozen(self):
-		self.frozen = True
+		self._modifiable_children = False
+		return self
+
+	def unfrozen(self):
+		self._modifiable_children = True
 		return self
 
 
@@ -383,7 +408,7 @@ class AnchoredMock(RealSetter):
 	
 	def __getitem__(self, attr):
 		return self._make_mock_if_required(attr, in_dict=True)
-		
+	
 	def __setitem__(self, attr, val):
 		child = self._make_mock_if_required(attr, in_dict= True)
 		child.return_value = val
