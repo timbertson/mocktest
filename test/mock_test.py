@@ -22,7 +22,7 @@ class MockObjectAndWrapperTest(TestCase):
 	def test_default_return_value(self):
 		wrapper = mock_wrapper()
 		mock = wrapper.mock
-		self.assertTrue(wrapper.return_value is mocktest.mock.DEFAULT)
+		self.assertTrue(wrapper.return_value is mocktest.silentmock.DEFAULT)
 		retval = mock()
 		self.assertEqual(retval.__class__, raw_mock().__class__)
 		self.assertEqual(mock_wrapper(retval).name, 'return value for (unnamed mock)')
