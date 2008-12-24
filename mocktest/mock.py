@@ -203,6 +203,9 @@ class MockWrapper(RealSetter):
 	
 	@classmethod
 	def _teardown(cls):
+		if cls._all_expectations is None:
+			raise RuntimeError("%s._teardown been called twice in a row"
+				% (cls.__name__,))
 		for expectation in cls._all_expectations:
 			assert expectation, expectation
 		cls._all_expectations = None
@@ -318,7 +321,7 @@ class AnchoredMock(RealSetter):
 			real_child = getattr(self._parent, name) if not in_dict else self._parent[name]
 		except (AttributeError, KeyError):
 			if not self._quiet:
-				print >> sys.stdout, "Warning: object %s has no %s \"%s\"" % (self._parent, "key" if in_dict else "attribute", name)
+				print >> sys.stderr, "Warning: object %s has no %s \"%s\"" % (self._parent, "key" if in_dict else "attribute", name)
 			return
 			
 		if isinstance(real_child, SilentMock):
@@ -332,7 +335,7 @@ class AnchoredMock(RealSetter):
 			new_child = MockWrapper(SilentMock(name=name))
 			self._child_store(in_dict)[name] = new_child
 			# insert its SilentMock into the parent
-			setattr(self._parent, name, new_child._mock)
+			self._insertion_func(in_dict)(self._parent, name, new_child._mock)
 		return self._child_store(in_dict)[name]
 
 	@classmethod
@@ -342,6 +345,12 @@ class AnchoredMock(RealSetter):
 		cls._active = []
 	
 	# interchangeable deletion and setter methods
+	def _insertion_func(self, in_dict):
+		return self._setitem if in_dict else self._setattr
+
+	def _deletion_func(self, in_dict):
+		return self._delitem if in_dict else self._delattr
+		
 	@staticmethod
 	def _setitem(target, name, val):
 		target[name] = val
@@ -352,7 +361,10 @@ class AnchoredMock(RealSetter):
 	
 	@staticmethod
 	def _delitem(target, name):
-		del target[name]
+		try:
+			del target[name]
+		except StandardError:
+			target[name] = None
 
 	@staticmethod
 	def _delattr(target, name):
@@ -370,12 +382,8 @@ class AnchoredMock(RealSetter):
 		"""
 		children = self._child_store(in_dict)
 		real_children = self._real_child_store(in_dict)
-		if in_dict:
-			assign = self._setitem
-			del_ = self._delitem
-		else:
-			assign = self._setattr
-			del_ = self._delattr
+		assign = self._insertion_func(in_dict)
+		del_ = self._deletion_func(in_dict)
 			
 		for name in children:
 			if name in real_children:
