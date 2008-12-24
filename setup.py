@@ -4,7 +4,7 @@ from setuptools import setup
 
 setup(
 	name='mocktest',
-	version='0.1',
+	version='0.2',
 	description='a mocking and expectation test library for python, inspired by rspec',
 	author='Tim Cuthbertson',
 	author_email='tim3d.junk+mocktest@gmail.com',
@@ -14,7 +14,8 @@ setup(
 	long_description="""\
 	mocktest is a mocking and expectation test library for python.
 	It is similar to rspec's should_receive and associated matchers, and
-	can be used with the standard unittest library.
+	offers a compatible unittest TestCase base class for automatically
+	verifying expectations.
 	""",
 	classifiers=[
 		"License :: OSI Approved :: BSD License",
