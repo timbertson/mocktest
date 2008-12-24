@@ -202,4 +202,3 @@ class MockObjectAndWrapperTest(TestCase):
 				(('first_call',),{}),
 				(('second_call','arg2'), {'call_':2}),
 			])
-

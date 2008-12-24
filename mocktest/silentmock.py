@@ -1,5 +1,12 @@
-DEFAULT = object()
+"""
+SilentMock makes many attempts to hide the fact that it is a mock object.
+Attribute accesses, sets and object calls are recorded internally, and can be
+inspected passing the silent mock into a MockWrapper object.
+"""
+
 from lib.realsetter import RealSetter
+
+DEFAULT = object()
 
 def raw_mock(name = None):
 	"""a silent mock object. use mock_of(silent_mock) to set expectations, etc"""

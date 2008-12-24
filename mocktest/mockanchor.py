@@ -1,3 +1,17 @@
+"""
+MockAnchor provides a way to rollback mocks at the end of every unit test.
+Instead of:
+  os.system = mock
+use:
+  mock_on(os).system
+
+after the current test is over, os.system will revert to its previous behaviour.
+
+mock_on(parent) returns a MockAnchor. Every attribute accessed (or set) via this instance
+will replace the parent's attribute of the same name, and return a MockWrapper for the newly
+inserted mock.
+"""
+
 import sys
 
 from lib.realsetter import RealSetter

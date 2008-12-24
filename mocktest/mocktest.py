@@ -1,6 +1,19 @@
+"""
+mocktest includes:
+
+ - TestCase: a subclass of unittest.TestCase with the following additions:
+	- mock._setup and _teardown are automatically called between tests,
+	  ensuring that expectations on mock objects are always checked
+	- enhanced versions of assertTrue / False, assertRaises
+
+ - pending annotation: the test case is run but is allowed to fail
+ - ignore annotation: the test case is not run
+"""
+
 __all__ = (
 	'TestCase',
 	'pending',
+	'ignore',
 )
 
 import unittest
@@ -50,9 +63,14 @@ def pending(function_or_reason):
 		return decorator
 
 def ignore(func):
-	return lambda self: None
+	def ignored_test(*args, **kwargs):
+		print "[[[ IGNORED ]]] ... "
+		print >> sys.stderr, "[[[ IGNORED ]]] ... "
+	return ignored_test
 
 class TestCase(unittest.TestCase):
+	pending = globals()['pending']
+	pending = globals()['ignore']
 	def __init__(self, methodName = 'runTest'):
 		# unittest.TestCase.__init__(self, methodName)
 		super(TestCase, self).__init__(methodName)

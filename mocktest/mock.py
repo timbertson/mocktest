@@ -2,10 +2,8 @@ __all__ = (
 	'raw_mock',
 	'mock_wrapper',
 	'mock_on',
-	'__version__'
+	'expect',
 )
-
-__version__ = '0.2'
 
 import sys
 from mockmatcher import MockMatcher
@@ -20,9 +18,13 @@ def _teardown():
 	MockWrapper._teardown()
 	MockAnchor._reset_all()
 
-def expect(mock_wrapper):
-	if not isinstance(mock_wrapper, MockWrapper):
-		raise TypeError("Expected %s, got %s" % (MockWrapper, mock_wrapper.__class__))
-	return mock_wrapper.is_expected
+def expect(wrapper_or_mock):
+	if isinstance(wrapper_or_mock, SilentMock):
+		wrapper = mock_wrapper(wrapper_or_mock)
+	else:
+		if not isinstance(wrapper, MockWrapper):
+			raise TypeError("Expected %s or %s, got %s" % (MockWrapper.__name__, SilentMock.__name__, mock_wrapper.__class__.__name__))
+		wrapper = wrapper_or_mock
+	return wrapper.is_expected
 
 

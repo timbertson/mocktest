@@ -1,3 +1,14 @@
+"""
+MockWrapper objects are to be used in test code. They allow
+behaviour and expectations to be set on a SilentMock.
+
+A wrapper can be created for an existing SilentMock with
+mock_wrapper(silent_mock).
+
+A MockWrapper / SilentMock pair can be created with mock_wrapper()
+(the silent mock object is accessible via mock_wrapper().mock)
+"""
+
 from lib.realsetter import RealSetter
 from silentmock import SilentMock
 from mockmatcher import MockMatcher
@@ -13,7 +24,6 @@ def mock_wrapper(silent_mock = None):
 	if isinstance(silent_mock, SilentMock):
 		return MockWrapper(silent_mock)
 	raise TypeError("expected a SilentMock instance, got %s" % (mock_.__class__,))
-
 
 class MockWrapper(RealSetter):
 	"""

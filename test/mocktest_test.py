@@ -4,8 +4,7 @@ import sys
 sys.path.append('..')
 
 import mocktest
-from mocktest import mock_wrapper, raw_mock, pending
-import mocktest
+from mocktest import mock_wrapper, raw_mock, pending, ignore, expect
 
 def assert_desc(expr):
 	assert expr, expr
@@ -13,6 +12,7 @@ def assert_desc(expr):
 class SomeError(RuntimeError):
 	def __str__(self):
 		return "args are %r" % (self.args,)
+	
 
 class TestAutoSpecVerification(unittest.TestCase):
 
@@ -72,10 +72,21 @@ class TestAutoSpecVerification(unittest.TestCase):
 		mocktest.mock._setup = backup_setup
 		mocktest.mock._teardown = backup_teardown
 	
+	def test_ignore(self):
+		callback = raw_mock()
+		mock_wrapper(callback).is_expected.exactly(0).times
+			
+		@ignore
+		def test_failure(self):
+			callback('a')
+		
+		self.assert_(self.run_method(test_failure).wasSuccessful())
+		assert_desc(self.output.called.with_('[[[ IGNORED ]]] ... '))
+		
 	def test_pending(self):
 		callback = raw_mock()
 			
-		@mocktest.pending
+		@pending
 		def test_failure(self):
 			callback('a')
 			raise RuntimeError, "something went wrong!"
@@ -83,7 +94,7 @@ class TestAutoSpecVerification(unittest.TestCase):
 		self.assert_(self.run_method(test_failure).wasSuccessful())
 		assert_desc(self.output.called.with_('[[[ PENDING ]]] ... '))
 		
-		@mocktest.pending("reason")
+		@pending("reason")
 		def test_failure_with_reason(self):
 			assert False
 			callback('b')
@@ -91,7 +102,7 @@ class TestAutoSpecVerification(unittest.TestCase):
 		self.assert_(self.run_method(test_failure_with_reason).wasSuccessful())
 		assert_desc(self.output.called.with_('[[[ PENDING ]]] (reason) ... '))
 		
-		@mocktest.pending
+		@pending
 		def test_successful_pending_test(self):
 			assert True
 			callback('c')
@@ -176,6 +187,21 @@ class TestAutoSpecVerification(unittest.TestCase):
 				' expected exactly 2 calls with arguments equal to: \'foo\', bar=1',
 				' received 0 calls'])
 		)
+	
+	def test_expect_should_work_on_a_mock_or_wrapper(self):
+		wrapper = mock_wrapper()
+		mock = wrapper.mock
+		
+		expect(mock.a).once()
+		wrapper.expects('b').once()
+		wrapper.child('c').is_expected.once()
+
+		self.assertTrue(len(mocktest.mockwrapper.MockWrapper._all_expectations) == 3)
+		
+		mock.a()
+		mock.b()
+		mock.c()
+
 
 	def test_reality_formatting(self):
 		m = mock_wrapper().named('ze_mock').mock
@@ -205,6 +231,16 @@ class MockTestTest(mocktest.TestCase):
 		
 		# pretend we're in a new test (wipe the expected calls register)
 		mocktest.mock.MockWrapper._all_expectations = []
+	
+	# def test_exposed_items(self):
+	# 	expected_items = [
+	# 	]
+	# 	got_items = dir(mocktest)
+	# 	
+	# 	for item in expected_items:
+	# 		if item not in got_items:
+	# 			raise AssertionError("expected item %s is not exposed in mocktest" % (item,))
+	# 	
 
 if __name__ == '__main__':
 	unittest.main()

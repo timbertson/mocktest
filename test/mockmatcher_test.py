@@ -2,7 +2,7 @@ import unittest
 import helper
 from mocktest import *
 
-class TestPySpec(mocktest.TestCase):
+class TestPySpec(TestCase):
 	def test_should_track_calls(self):
 		wrapper = mock_wrapper()
 		wrapper.mock('arg1')
