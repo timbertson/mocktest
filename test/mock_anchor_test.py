@@ -22,7 +22,7 @@ class NoDeletesObject(object):
 		
 real_object = RealClass()
 
-class AnchoredMockTest(TestCase):
+class MockAnchorTest(TestCase):
 	def downup(self):
 		mocktest._teardown()
 		mocktest._setup()

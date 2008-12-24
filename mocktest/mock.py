@@ -17,7 +17,7 @@ def _setup():
 
 def _teardown():
 	MockWrapper._teardown()
-	AnchoredMock._reset_all()
+	MockAnchor._reset_all()
 
 
 def expect(mock_wrapper):
@@ -53,7 +53,7 @@ def mock_on(parent, quiet = False):
 	All attributes and items accessed through this returned object will become mocks on parent
 	All mocks set via this mechanism will be rolled back at the end of your test case
 	"""
-	return AnchoredMock(parent, quiet)
+	return MockAnchor(parent, quiet)
 
 class RealSetter(object):
 	def _real_set(self, **kwargs):
@@ -295,7 +295,7 @@ class MockWrapper(RealSetter):
 
 
 
-class AnchoredMock(RealSetter):
+class MockAnchor(RealSetter):
 	_active = []
 	def __init__(self, parent, quiet=False):
 		self._init_records()
