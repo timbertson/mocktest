@@ -4,7 +4,8 @@ import sys
 sys.path.append('..')
 
 import mocktest
-from mocktest import Mock, pending
+from mocktest import mock_wrapper, raw_mock, pending
+import mocktest
 
 def assert_desc(expr):
 	assert expr, expr
@@ -16,8 +17,15 @@ class SomeError(RuntimeError):
 class TestAutoSpecVerification(unittest.TestCase):
 
 	def setUp(self):
-		sys.stderr = Mock()
-		sys.stderr.write = self.output = Mock()
+		mocktest._setup()
+		self.stderr = mock_wrapper().named('stderr')
+		sys.stderr = self.stderr.mock
+		self.output = mock_wrapper(sys.stderr.write)
+		print "all expectations is %r" % (mocktest.mock.MockWrapper._all_expectations,)
+	
+	def tearDown(self):
+		print "all expectations is %r" % (mocktest.mock.MockWrapper._all_expectations,)
+		mocktest._teardown()
 	
 	def run_suite(self, class_):
 		suite = unittest.makeSuite(class_)
@@ -28,17 +36,29 @@ class TestAutoSpecVerification(unittest.TestCase):
 	def run_method(self, test_func):
 		class SingleTest(mocktest.TestCase):
 			test_method = test_func
-		return self.run_suite(SingleTest)
+		
+		mocktest._teardown()
+		result = self.run_suite(SingleTest)
+		mocktest._setup()
+		
+		if not result.wasSuccessful():
+			print result.errors
+			print result.failures
+		return result
 		
 	def test_should_hijack_setup_and_teardown(self):
 		lines = []
 		def capture(line):
 			lines.append(line)
-		Mock._setup = Mock(action = lambda: capture("_setup"))
-		Mock._teardown = Mock(action = lambda: capture("_teardown"))
+		backup_setup = mocktest._setup
+		backup_teardown = mocktest._teardown
+		
+		mocktest.mock._setup = mock_wrapper().with_action(lambda: capture("_setup")).mock
+		mocktest.mock._teardown = mock_wrapper().with_action(lambda: capture("_teardown")).mock
 		
 		class Foo(mocktest.TestCase):
 			def setUp(self):
+				print "SETUP"
 				capture("setup")
 			def tearDown(self):
 				capture("teardown")
@@ -48,9 +68,12 @@ class TestAutoSpecVerification(unittest.TestCase):
 		result = self.run_suite(Foo)
 		self.assertTrue(result.wasSuccessful())
 		self.assertEqual(lines, ['_setup', 'setup', 'main', '_teardown', 'teardown'])
+		
+		mocktest.mock._setup = backup_setup
+		mocktest.mock._teardown = backup_teardown
 	
 	def test_pending(self):
-		callback = Mock()
+		callback = raw_mock()
 			
 		@mocktest.pending
 		def test_failure(self):
@@ -76,33 +99,21 @@ class TestAutoSpecVerification(unittest.TestCase):
 		self.assertEqual(self.run_method(test_successful_pending_test).wasSuccessful(), False)
 		assert_desc(self.output.called.with_('test_successful_pending_test PASSED unexpectedly '))
 		
-		self.assertEqual(callback.called.exactly(2).times.get_calls(), [('a',), ('c',)])
-	
-	def test_invalid_usage_before_setup(self):
-		# before any setup
-		e = None
-		try:
-			Mock().is_expected
-		except Exception, e_:
-			e = e_
-		self.assertFalse(e is None, "no exception was raised")
-		self.assertEqual(e.__class__, RuntimeError)
-		self.assertEqual(e.message, "Mock._setup has not been called. Make sure you are inheriting from mock.TestCase, not unittest.TestCase")
+		self.assertEqual(mock_wrapper(callback).called.exactly(2).times.get_calls(), [('a',), ('c',)])
 	
 	def test_invalid_usage_after_teardown(self):
-		# after a test case
-		Mock._setup()
-		Mock._teardown()
+		mocktest._teardown()
 		
 		e = None
 		try:
-			Mock().is_expected
+			mock_wrapper()
 		except Exception, e_:
 			e = e_
 
 		self.assertFalse(e is None, "no exception was raised")
 		self.assertEqual(e.__class__, RuntimeError)
-		self.assertEqual(e.message, "Mock._setup has not been called. Make sure you are inheriting from mock.TestCase, not unittest.TestCase")
+		self.assertEqual(e.message, "MockWrapper._setup has not been called. Make sure you are inheriting from mock.TestCase, not unittest.TestCase")
+		mocktest._setup()
 
 
 	def make_error(self, *args, **kwargs):
@@ -159,21 +170,21 @@ class TestAutoSpecVerification(unittest.TestCase):
 
 	def test_expectation_formatting(self):
 		self.assertEqual(
-			repr(Mock().called.with_('foo', bar=1).twice()),
+			repr(mock_wrapper().called.with_('foo', bar=1).twice()),
 			'\n'.join([
-				'Mock "unknown-mock" did not match expectations:',
+				'Mock "unnamed mock" did not match expectations:',
 				' expected exactly 2 calls with arguments equal to: \'foo\', bar=1',
 				' received 0 calls'])
 		)
 
 	def test_reality_formatting(self):
-		m = Mock(name='ze_mock')
+		m = mock_wrapper().named('ze_mock').mock
 		m(1,2,3)
 		m(foo='bar')
 		m()
 		m(1, foo=2)
 		self.assertEqual(
-			repr(m.called.once()),
+			repr(mock_wrapper(m).called.once()),
 			'\n'.join([
 				'Mock "ze_mock" did not match expectations:',
 				' expected exactly 1 calls',
@@ -184,17 +195,16 @@ class TestAutoSpecVerification(unittest.TestCase):
 				'  4:   1, foo=2'])
 		)
 
-	
 class MockTestTest(mocktest.TestCase):
 	def test_should_do_expectations(self):
-		f = Mock()
-		f.foo.is_expected.once()
-		f.foo('a')
-		f.foo()
-		self.assertRaises(AssertionError, Mock._teardown, matching=re.compile('Mock "foo" .*expected exactly 1 calls.* received 2 calls.*', re.DOTALL))
+		f = mock_wrapper()
+		f.expects('foo').once()
+		f.mock.foo('a')
+		f.mock.foo()
+		self.assertRaises(AssertionError, mocktest._teardown, matching=re.compile('Mock "foo" .*expected exactly 1 calls.* received 2 calls.*', re.DOTALL))
 		
 		# pretend we're in a new test (wipe the expected calls register)
-		Mock._all_expectations = []
+		mocktest.mock.MockWrapper._all_expectations = []
 
 if __name__ == '__main__':
 	unittest.main()

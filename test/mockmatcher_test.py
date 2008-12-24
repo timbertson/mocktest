@@ -2,142 +2,139 @@ import unittest
 import helper
 from mocktest import *
 
-class TestPySpec(unittest.TestCase):
+class TestPySpec(mocktest.TestCase):
 	def test_should_track_calls(self):
-		obj = Mock()
-		obj.foo('arg1')
+		wrapper = mock_wrapper()
+		wrapper.mock('arg1')
 		
-		self.assertTrue(obj.foo.called)
-		self.assertEquals(obj.foo.called, True)
-		self.assertTrue(obj.foo.called.with_args('arg1'))
+		self.assertTrue(wrapper.called)
+		self.assertEquals(wrapper.called, True)
+		self.assertTrue(wrapper.called.with_args('arg1'))
 
-		self.assertFalse(obj.bar.called)
-		self.assertFalse(obj.foo.called.with_args('arg1', 'arg2'))
+		self.assertFalse(mock_wrapper().called)
+		self.assertFalse(wrapper.called.with_args('arg1', 'arg2'))
 	
 	def test_should_track_number_of_calls(self):
-		obj = Mock()
-		obj.foo('a')
-		obj.foo('b')
-		obj.foo('b')
+		wrapper = mock_wrapper()
+		mock = wrapper.mock
+		mock('a')
+		mock('b')
+		mock('b')
 		
 		# exactly
-		self.assertTrue(obj.foo.called.exactly(3).times)
-		self.assertTrue(obj.bar.called.exactly(0).times)
+		self.assertTrue(wrapper.called.exactly(3).times)
+		self.assertTrue(mock_wrapper(wrapper.mock.bar).called.exactly(0).times)
 
 		# at_least
-		self.assertTrue(obj.foo.called.at_least(1).times)
-		self.assertFalse(obj.foo.called.at_least(4).times)
+		self.assertTrue(wrapper.called.at_least(1).times)
+		self.assertFalse(wrapper.called.at_least(4).times)
 
 		# at_most
-		self.assertFalse(obj.foo.called.at_most(2).times)
-		self.assertTrue(obj.foo.called.at_most(4).times)
+		self.assertFalse(wrapper.called.at_most(2).times)
+		self.assertTrue(wrapper.called.at_most(4).times)
 
 		# between
-		self.assertTrue(obj.foo.called.between(1,4).times)
-		self.assertTrue(obj.foo.called.between(4,1).times)
+		self.assertTrue(wrapper.called.between(1,4).times)
+		self.assertTrue(wrapper.called.between(4,1).times)
 
 		# failed betweens
-		self.assertFalse(obj.foo.called.between(4,5).times)
-		self.assertFalse(obj.foo.called.between(5,4).times)
-		self.assertFalse(obj.foo.called.between(5,5).times)
+		self.assertFalse(wrapper.called.between(4,5).times)
+		self.assertFalse(wrapper.called.between(5,4).times)
+		self.assertFalse(wrapper.called.between(5,5).times)
 	
 	def test_should_default_to_one_or_more_calls(self):
-		obj = Mock()
-		obj.a()
-		obj.a(1)
+		wrapper = mock_wrapper()
+		wrapper.mock.a()
+		wrapper.mock.a(1)
 		
-		self.assertTrue(obj.a.called)
-		self.assertFalse(obj.b.called)
+		self.assertTrue(wrapper.child('a').called)
+		self.assertFalse(wrapper.child('b').called)
 	
 	def test_should_have_once_twice_and_thrice_aliases(self):
-		obj = Mock()
-		obj.a()
+		wrapper = mock_wrapper()
+		mock = wrapper.mock
+		mock.a()
 		
-		obj.b()
-		obj.b()
+		mock.b()
+		mock.b()
 		
-		obj.c()
-		obj.c()
-		obj.c()
+		mock.c()
+		mock.c()
+		mock.c()
 		
-		self.assertTrue(obj.a.called.once())
-		self.assertFalse(obj.a.called.twice())
-		self.assertFalse(obj.a.called.thrice())
-
-		self.assertFalse(obj.b.called.once())
-		self.assertTrue(obj.b.called.twice())
-		self.assertFalse(obj.b.called.thrice())
+		self.assertTrue(wrapper.child('a').called.once())
+		self.assertFalse(wrapper.child('a').called.twice())
+		self.assertFalse(wrapper.child('a').called.thrice())
+	
+		self.assertFalse(wrapper.child('b').called.once())
+		self.assertTrue(wrapper.child('b').called.twice())
+		self.assertFalse(wrapper.child('b').called.thrice())
 		
-		self.assertFalse(obj.c.called.once())
-		self.assertFalse(obj.c.called.twice())
-		self.assertTrue(obj.c.called.thrice())
+		self.assertFalse(wrapper.child('c').called.once())
+		self.assertFalse(wrapper.child('c').called.twice())
+		self.assertTrue(wrapper.child('c').called.thrice())
 		
 	def test_should_track_number_of_calls_with_arguments(self):
-		obj = Mock()
-		obj.foo('a')
-		obj.foo('b')
-		obj.foo('b')
-		obj.foo('unused_call')
+		wrapper = mock_wrapper()
+		mock = wrapper.mock
+		mock.foo('a')
+		mock.foo('b')
+		mock.foo('b')
+		mock.foo('unused_call')
 		
-		self.assertTrue(obj.foo.called.with_args('a').exactly(1))
-		self.assertTrue(obj.foo.called.with_args('b').exactly(2))
+		self.assertTrue(wrapper.child('foo').called.with_args('a').exactly(1))
+		self.assertTrue(wrapper.child('foo').called.with_args('b').exactly(2))
 		
 		# reverse check order:
 		
-		self.assertTrue(obj.foo.called.exactly(1).with_args('a'))
-		self.assertTrue(obj.foo.called.exactly(2).with_args('b'))
+		self.assertTrue(wrapper.child('foo').called.exactly(1).with_args('a'))
+		self.assertTrue(wrapper.child('foo').called.exactly(2).with_args('b'))
 	
 	def test_should_return_arguments(self):
-		obj = Mock()
-		obj.foo(1)
-		obj.foo('bar', x='y')
-		obj.bar()
-		obj.xyz(foo='bar')
+		wrapper = mock_wrapper()
+		mock = wrapper.mock
+		mock.foo(1)
+		mock.foo('bar', x='y')
+		mock.bar()
+		mock.xyz(foo='bar')
+
+		self.assertEqual(wrapper.child('foo').called.get_calls(),
+			[
+				(1,),
+				(('bar',),{'x':'y'})
+			])
+		self.assertRaises(AssertionError, wrapper.child('foo').called.once().get_calls)
+		self.assertEqual(wrapper.child('foo').called.twice().get_calls(),
+			[
+				(1,),
+				(('bar',),{'x':'y'})
+			])
+		self.assertEqual(wrapper.child('xyz').called.once().get_calls()[0], (None, {'foo':'bar'}))
 		
-		self.assertEqual(obj.foo.called.get_calls(), (   ((1,),None), (('bar',),{'x':'y'})    ))
-		self.assertEqual(obj.foo.called.once().get_calls(), None)
-		self.assertEqual(obj.foo.called.twice().get_calls(), (    ((1,),None), (('bar',),{'x':'y'})   ))
-		self.assertEqual(obj.xyz.called.once().get_calls()[0], (None, {'foo':'bar'}))
-		
-		self.assertRaises(ValueError, lambda: obj.foo.called.twice().get_args())
-		self.assertRaises(ValueError, lambda: obj.bar.called.get_args())
-		self.assertEqual(obj.bar.called.once().get_args(), (None, None))
+		self.assertRaises(ValueError, wrapper.child('foo').called.twice().get_args)
+		self.assertRaises(ValueError, wrapper.child('bar').called.get_args)
+		self.assertEqual(wrapper.child('bar').called.once().get_args(), (None))
 		
 		
 	def test_should_allow_argument_checking_callbacks(self):
-		obj = Mock()
-		obj.foo(1)
-		obj.foo(2)
-		obj.foo(3)
-		obj.foo(4)
+		wrapper = mock_wrapper()
+		mock = wrapper.mock
+		mock.foo(1)
+		mock.foo(2)
+		mock.foo(3)
+		mock.foo(4)
 		
-		self.assertTrue(obj.foo.called.twice().where_args(lambda *args: all([x < 3 for x in args])))
-		self.assertTrue(obj.foo.called.exactly(4).times)
-	
-	def test_should_return_arguments(self):
-		obj = Mock()
-		obj.foo(1)
-		obj.foo(2, bar='keyword')
-		obj.foo(bar='just_keywords')
-		
-		called_once_matcher = obj.foo.called.once()
-		
-		self.assertRaises(AssertionError, called_once_matcher.get_calls)
-		self.assertRaises(ValueError, obj.foo.called.thrice().get_args)
-		self.assertEqual(obj.foo.called.thrice().get_calls(), [
-			(1,),
-			((2,), {'bar': 'keyword'}),
-			(None, {'bar': 'just_keywords'})
-		])
+		self.assertTrue(wrapper.child('foo').called.twice().where_args(lambda *args: all([x < 3 for x in args])))
+		self.assertTrue(wrapper.child('foo').called.exactly(4).times)
 	
 	def test_should_return_arguments_for_a_subset_of_calls_given_conditions(self):
-		obj = Mock()
-		obj(1)
-		obj(1)
-		obj(2)
+		wrapper = mock_wrapper()
+		mock = wrapper.mock
+		mock(1)
+		mock(1)
+		mock(2)
 		
-		self.assertEqual(obj.called.with_(1).get_calls(), [(1,), (1,)])
-		
+		self.assertEqual(wrapper.called.with_(1).get_calls(), [(1,), (1,)])
 	
 if __name__ == '__main__':
 	unittest.main()

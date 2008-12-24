@@ -17,6 +17,7 @@ def _setup():
 
 def _teardown():
 	MockWrapper._teardown()
+	AnchoredMock._reset_all()
 
 
 def expect(mock_wrapper):
@@ -83,19 +84,15 @@ class SilentMock(RealSetter):
 		}
 		for key,val in resets.items():
 			self._mock_dict[key] = val
-		print self._mock_get('call_list')
 	
 	def _mock_set(self, **kwargs):
 		for attr, val in kwargs.items():
-			print "setting %s on %r to %s" % (attr, self, val)
 			if not attr in self._mock_dict:
 				raise KeyError, "no such mock attribute: %s" % (attr,)
 			self._mock_dict[attr] = val
 			hookname = '_mock_set_%s_hook' % (attr,)
 			try:
-				print "trying hook: %s" % hookname
 				self._real_get(hookname)(val)
-				print "%s worked!" % hookname
 			except AttributeError: pass
 
 	def _mock_get(self, attr):
@@ -104,18 +101,14 @@ class SilentMock(RealSetter):
 	def _mock_del(self, attr):
 		hookname = '_mock_del_%s_hook' % (attr,)
 		try:
-			print "trying hook: %s" % hookname
 			self._real_get(hookname)()
-			print "%s worked!" % hookname
 		except AttributeError: pass
 	
 	# hooks on mock attributes
 	def _mock_set_return_value_hook(self, val):
-		print "setting return value provided = true"
 		self._mock_set(_return_value_provided=True)
 	
 	def _mock_del_return_value_hook(self):
-		print "setting return value provided = false"
 		self._mock_set(return_value=DEFAULT)
 		self._mock_set(_return_value_provided=False)
 	
@@ -124,14 +117,11 @@ class SilentMock(RealSetter):
 		retval_done = False
 		if self._mock_get('action') is not None:
 			side_effect_ret_val = self._mock_get('action')(*args, **kwargs)
-			print "return provided = %r" % (self._mock_get('_return_value_provided'),)
 			if not self._mock_get('_return_value_provided'):
 				retval = side_effect_ret_val
 				retval_done = True
-				print "retval side effected to %s" % (retval)
 
 		if not retval_done:
-			print "retval set to mocks return_value"
 			retval = self._mock_get('return_value')
 
 		if retval is DEFAULT:
@@ -156,7 +146,6 @@ class SilentMock(RealSetter):
 			except AttributeError:
 				pass
 			
-		print "getting pretend attr %s" % name
 		def _new():
 			self._mock_get('_children')[name] = SilentMock(name=name)
 			return self._mock_get('_children')[name]
@@ -172,7 +161,7 @@ class SilentMock(RealSetter):
 		return child
 
 	def __str__(self):
-		return 'mock: ' + str(self._mock_get('name'))
+		return str(self._mock_get('name'))
 
 class MockWrapper(RealSetter):
 	"""
@@ -181,11 +170,12 @@ class MockWrapper(RealSetter):
 	
 	all setattr and getattr go via the attahced silent mock's _mock_get and _mock_set
 	"""
+	_all_expectations = None
 	def __init__(self, wrapped_mock = None):
 		if self.__class__._all_expectations is None:
-			raise RuntimeError("%s._setup has not been called. " +
+			raise RuntimeError(("%s._setup has not been called. " +
 				"Make sure you are inheriting from mock.TestCase, " +
-				"not unittest.TestCase" % (self.__class__,))
+				"not unittest.TestCase") % (self.__class__.__name__,))
 		if wrapped_mock is None:
 			wrapped_mock = SilentMock()
 		if not isinstance(wrapped_mock, SilentMock):
@@ -204,9 +194,11 @@ class MockWrapper(RealSetter):
 	mock = property(_get_mock)
 			
 	# mockExpecation integration
-	_all_expectations = None
 	@classmethod
 	def _setup(cls):
+		if not cls._all_expectations is None:
+			raise RuntimeError("%s._setup been called twice in a row"
+				% (cls.__name__,))
 		cls._all_expectations = []
 	
 	@classmethod
@@ -214,7 +206,6 @@ class MockWrapper(RealSetter):
 		for expectation in cls._all_expectations:
 			assert expectation, expectation
 		cls._all_expectations = None
-		AnchoredMock._reset_all()
 
 	def __called_matcher(self):
 		return MockMatcher(self._mock)
@@ -245,8 +236,10 @@ class MockWrapper(RealSetter):
 		self._mock._mock_del(attr)
 	
 	def reset(self):
-		print "resetting..."
 		self.mock._mock_reset()
+	
+	def child(self, val):
+		return mock_wrapper(getattr(self.mock, val))
 		
 	# convenience methods for dsl-like chaining
 	def returning(self, val):
@@ -283,13 +276,10 @@ class MockWrapper(RealSetter):
 	
 	def _with_children(self, *children, **kwchildren):
 		"""internally add children, but don't freeze the mock"""
-		print "adding children: %r and %r" % (children, kwchildren)
 		for child in children:
 			getattr(self.mock, child)
 		for child, val in kwchildren.items():
-			print "setting %s=%r" % (child, val)
 			setattr(self.mock, child, val)
-		print self._children
 		return self
 	
 	def frozen(self):

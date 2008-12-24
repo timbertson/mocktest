@@ -1,14 +1,9 @@
-from mocktest import pending ##TODO: FIX
-
 import os
 import sys
-this_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..','..'))
-if not this_dir in sys.path:
-	sys.path.insert(0, this_dir)
 
+import helper
 from mocktest import TestCase
-
-from mocktest import mock_on, raw_mock, mock_wrapper
+from mocktest import raw_mock, mock_wrapper
 import mocktest
 
 class MockObjectAndWrapperTest(TestCase):
@@ -113,6 +108,15 @@ class MockObjectAndWrapperTest(TestCase):
 		
 		wrapper = mock_wrapper().frozen()
 		self.assert_mock_is_frozen(wrapper)
+	
+	def test_raising(self):
+		# class
+		wrapper = mock_wrapper().raising(SystemError)
+		self.assertRaises(SystemError, wrapper.mock)
+
+		# instance
+		wrapper = mock_wrapper().raising(SystemError("this simply will not do"))
+		self.assertRaises(SystemError, wrapper.mock)
 	
 	def test_children_and_methods_can_coexist(self):
 		wrapper = mock_wrapper().with_children(a='a').unfrozen().with_methods(b='b')
