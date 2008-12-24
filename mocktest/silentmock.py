@@ -85,13 +85,13 @@ class SilentMock(RealSetter):
 
 		return retval
 
-	def __fail_if_no_child_allowed(self, name):
+	def _mock_fail_if_no_child_allowed(self, name):
 		if name not in self._mock_get('_children'):
 			if not self._mock_get('_modifiable_children'):
 				raise AttributeError, "object (%s) has no attribute '%s'" % (self, name,)
 
 	def __setattr__(self, attr, val):
-		self.__fail_if_no_child_allowed(attr)
+		self._mock_fail_if_no_child_allowed(attr)
 		self._mock_get('_children')[attr] = val
 
 	def __getattribute__(self, name):
@@ -106,7 +106,7 @@ class SilentMock(RealSetter):
 			return self._mock_get('_children')[name]
 
 		if name not in self._mock_get('_children'):
-			self.__fail_if_no_child_allowed(name)
+			self._mock_fail_if_no_child_allowed(name)
 			child = _new()
 		else:
 			# child already exists
