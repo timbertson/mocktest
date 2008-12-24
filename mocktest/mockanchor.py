@@ -16,7 +16,7 @@ import sys
 
 from lib.realsetter import RealSetter
 from mockwrapper import MockWrapper
-from silentmock import SilentMock
+from silentmock import SilentMock, raw_mock
 
 def mock_on(parent, quiet = False):
 	return MockAnchor(parent, quiet)
@@ -58,7 +58,7 @@ class MockAnchor(RealSetter):
 	def _make_mock_if_required(self, name, in_dict=False):
 		if name not in self._children:
 			self._backup_child(name, in_dict)
-			new_child = MockWrapper(SilentMock(name=name))
+			new_child = MockWrapper(raw_mock(name=name))
 			self._child_store(in_dict)[name] = new_child
 			# insert its SilentMock into the parent
 			self._insertion_func(in_dict)(self._parent, name, new_child._mock)

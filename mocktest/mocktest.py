@@ -48,7 +48,6 @@ def pending(function_or_reason):
 				print >> sys.stderr, "[[[ PENDING ]]]%s ... " % (reason_str,)
 				print "[[[ PENDING ]]]%s ... " % (reason_str,)
 			if success:
-				print "RAISING!"
 				raise AssertionError, "%s%s PASSED unexpectedly " % (fn_name, reason_str)
 		actually_call_it.__name__ = func.__name__
 		return actually_call_it
@@ -121,11 +120,8 @@ class TestCase(unittest.TestCase):
 		callsig = "%s()" % (callable.__name__,)
 
 		try:
-			print "calling %s " % callsig
 			func()
-			print "NO ERRORS!"
 		except exception, exc:
-			print repr(exc)
 			if args is not None:
 				self.failIf(exc.args != args,
 					"%s raised %s with unexpected args: "\
@@ -144,7 +140,6 @@ class TestCase(unittest.TestCase):
 					% (callsig, exc.__class__, message, str(exc)))
 		except:
 			exc_info = sys.exc_info()
-			print exc_info
 			self.fail("%s raised an unexpected exception type: "\
 				"expected=%s, actual=%s"\
 				% (callsig, exception, exc_info[0]))

@@ -5,6 +5,7 @@ import helper
 from mocktest import TestCase
 from mocktest import mock_on, raw_mock, mock_wrapper
 import mocktest
+mock_class = mocktest.silentmock.SilentMock
 
 real_dict = {'a':'a', 'b':'b'}
 class RealClass(object):
@@ -36,7 +37,8 @@ class MockAnchorTest(TestCase):
 		real_object.a()
 		self.assertEqual(real_object.c(), 'c')
 		self.assertEqual(real_dict['a'](), 1)
-		self.assertEqual(real_dict['c'].__class__, raw_mock().__class__)
+		self.assertTrue(isinstance(real_dict['c'], mock_class))
+		self.assertTrue(isinstance(real_object.c, mock_class))
 	
 	def test_should_reinstate_original_objects_on_teardown(self):
 		mock_on(real_object).a = 'mocky a'
@@ -78,13 +80,28 @@ class MockAnchorTest(TestCase):
 		mock_foo = mock_anchor.foo.mock
 		mock_foo()
 
-	def test_should_warn_on_nonexistant_attributes_unless_quiet(self):
+	def test_should_warn_on_nonexistant_attributes(self):
 		stderr = mock_on(sys).stderr
-		stderr.expects('write').once().with_('Warning: object %s has no attribute "c"' % (real_object,))
+
 		mock_on(real_object).c
+
+		self.assertEqual(stderr.child('write').called.get_calls(),[
+			('Warning: object %s has no attribute "c"' % (real_object,),),
+			('\n',)
+		])
 		
 	def test_should_warn_on_nonexistant_keys_unless_quiet(self):
 		stderr = mock_on(sys).stderr
-		stderr.expects('write').once().with_('Warning: object %s has no key "c"' % (real_dict,))
+		dict_copy = real_dict.copy()
 		mock_on(real_dict)['c']
+		
+		self.assertEqual(stderr.child('write').called.get_calls(), [
+			('Warning: object %s has no key "c"' % (dict_copy,),),
+			('\n',)
+		])
+		
+	def test_should_not_warn_if_quiet_specified(self):
+		stderr = mock_on(sys).stderr
+		mock_on(real_object, quiet=True).c
+		self.assertFalse(stderr.child('write').called)
 		

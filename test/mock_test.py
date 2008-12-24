@@ -6,13 +6,18 @@ from mocktest import TestCase
 from mocktest import raw_mock, mock_wrapper
 import mocktest
 
+mock_class = mocktest.silentmock.SilentMock
+
 class MockObjectAndWrapperTest(TestCase):
+	def is_a_mock(self, val):
+		self.assertTrue(isinstance(val, mock_class))
+		
 	def test_constructor(self):
 		mock = raw_mock()
 		wrapper = mock_wrapper(mock)
 		self.assertFalse(wrapper.called, "called not initialised correctly")
 		self.assertTrue(wrapper.called.exactly(0), "call_count not initialised correctly")
-
+	
 		self.assertEquals(wrapper.call_list, [])
 		self.assertEquals(wrapper._children, {})
 		self.assertEquals(wrapper.action, None)
@@ -24,15 +29,15 @@ class MockObjectAndWrapperTest(TestCase):
 		mock = wrapper.mock
 		self.assertTrue(wrapper.return_value is mocktest.silentmock.DEFAULT)
 		retval = mock()
-		self.assertEqual(retval.__class__, raw_mock().__class__)
+		self.is_a_mock(retval)
 		self.assertEqual(mock_wrapper(retval).name, 'return value for (unnamed mock)')
-		self.assertEquals(wrapper.return_value.__class__, raw_mock().__class__)
-	
+		self.is_a_mock(wrapper.return_value)
+
 	def test_default_accessor_value(self):
 		wrapper = mock_wrapper()
 		mock = wrapper.mock
 		retval = mock.child_a
-		self.assertEqual(retval.__class__, raw_mock().__class__)
+		self.is_a_mock(retval)
 		self.assertEqual(mock_wrapper(retval).name, 'child_a')
 		
 	def test_return_value(self):
@@ -51,18 +56,18 @@ class MockObjectAndWrapperTest(TestCase):
 		wrapper = mock_wrapper().with_methods('blob', foo='bar', x=123)
 		mock = wrapper.mock
 		
-		self.assertEqual(mock.blob().__class__, raw_mock().__class__)
+		self.is_a_mock(mock.blob())
 		self.assertEqual(mock.foo(), 'bar')
 		self.assertEqual(mock.x(), 123)
 		
 		self.assertEqual(sorted(wrapper._children.keys()), ['blob', 'foo','x'])
 		self.assert_mock_is_frozen(wrapper)
-
+	
 	def test_with_children_should_set_return_values_and_freeze_mock(self):
 		wrapper = mock_wrapper().with_children('blob', foo='bar', x=123)
 		mock = wrapper.mock
 		
-		self.assertEqual(mock.blob.__class__, raw_mock().__class__)
+		self.is_a_mock(mock.blob)
 		self.assertEqual(mock.foo, 'bar')
 		self.assertEqual(mock.x, 123)
 		
@@ -72,7 +77,7 @@ class MockObjectAndWrapperTest(TestCase):
 	def test_name_as_first_arg_in_constructor(self):
 		wrapper = mock_wrapper(raw_mock("li'l mocky"))
 		self.assertEqual(wrapper.name, "li'l mocky")
-
+	
 	class SpecClass:
 		b = "bee"
 		__something__ = None
@@ -83,15 +88,15 @@ class MockObjectAndWrapperTest(TestCase):
 	def test_spec_class_in_constructor(self):
 		wrapper = mock_wrapper().with_spec(self.SpecClass)
 		self.assertEqual(wrapper._children.keys(), ['a','b'])
-		self.assertTrue(isinstance(wrapper.mock.a(), raw_mock().__class__))
+		self.is_a_mock(wrapper.mock.a())
 		self.assert_mock_is_frozen(wrapper)
 		
 		self.assertRaises(AttributeError, lambda: wrapper.mock.__something__)
-
+	
 	def test_spec_instance_in_constructor(self):
 		wrapper = mock_wrapper().with_spec(self.SpecClass())
 		self.assertEqual(wrapper._children.keys(), ['a','b'])
-		self.assertTrue(isinstance(wrapper.mock.a(), raw_mock().__class__))
+		self.is_a_mock(wrapper.mock.a())
 		self.assert_mock_is_frozen(wrapper)
 		self.assertRaises(AttributeError, lambda: wrapper.mock.__something__)
 	
@@ -113,7 +118,7 @@ class MockObjectAndWrapperTest(TestCase):
 		# class
 		wrapper = mock_wrapper().raising(SystemError)
 		self.assertRaises(SystemError, wrapper.mock)
-
+	
 		# instance
 		wrapper = mock_wrapper().raising(SystemError("this simply will not do"))
 		self.assertRaises(SystemError, wrapper.mock)
@@ -180,6 +185,32 @@ class MockObjectAndWrapperTest(TestCase):
 		wrapper = mock_wrapper().returning('bar').with_action(return_foo)
 		self.assertEqual(wrapper.mock(), 'bar')
 	
+	def test_should_allow_setting_of_magic_methods(self):
+		clean_wrapper = mock_wrapper().named('clean')
+		modified_wrapper = mock_wrapper().named('modified').with_special(
+			__repr__ = mock_wrapper().returning('my repr!').mock,
+			__len__ = lambda x: 5)
+			
+		self.assertNotEqual(clean_wrapper.mock.__class__, modified_wrapper.mock.__class__)
+		
+		val = repr(modified_wrapper.mock)
+		self.assertTrue(modified_wrapper.child('__repr__').called.once())
+		self.assertEqual(val, 'my repr!')
+	
+		# can't override builtin mock magic methods
+		self.assertRaises(
+			AttributeError, lambda: modified_wrapper.with_special(__str__ = lambda x: 'foop'),
+			message="cannot override SilentMock special method '__str__'")
+	
+		# can't assign non-magic ones
+		self.assertRaises(ValueError, lambda: modified_wrapper.with_special(_len = lambda x: 5))
+		
+		self.assertEqual(len(modified_wrapper.mock), 5)
+		self.assertRaises(AttributeError, lambda: clean_wrapper.mock.__len__)
+		self.assertRaises(TypeError, lambda: len(clean_wrapper.mock))
+		self.assertEqual(str(clean_wrapper.mock), 'clean')
+		
+	
 	def test_call_recording(self):
 		wrapper = mock_wrapper()
 		mock = wrapper.mock
@@ -191,7 +222,7 @@ class MockObjectAndWrapperTest(TestCase):
 				((),{}), # called with nothing
 				((),{}), # (twice)
 			])
-
+	
 		wrapper.reset()
 		self.assertEquals(wrapper.call_list, [])
 		

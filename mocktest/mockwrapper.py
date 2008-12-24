@@ -10,7 +10,7 @@ A MockWrapper / SilentMock pair can be created with mock_wrapper()
 """
 
 from lib.realsetter import RealSetter
-from silentmock import SilentMock
+from silentmock import SilentMock, raw_mock
 from mockmatcher import MockMatcher
 
 def mock_wrapper(silent_mock = None):
@@ -20,10 +20,10 @@ def mock_wrapper(silent_mock = None):
 	for a slent mock
 	"""
 	if silent_mock is None:
-		silent_mock = SilentMock()
+		silent_mock = raw_mock()
 	if isinstance(silent_mock, SilentMock):
 		return MockWrapper(silent_mock)
-	raise TypeError("expected a SilentMock instance, got %s" % (mock_.__class__,))
+	raise TypeError("expected a SilentMock instance, got %s" % (silent_mock.__class__.__name__,))
 
 class MockWrapper(RealSetter):
 	"""
@@ -39,9 +39,9 @@ class MockWrapper(RealSetter):
 				"Make sure you are inheriting from mock.TestCase, " +
 				"not unittest.TestCase") % (self.__class__.__name__,))
 		if wrapped_mock is None:
-			wrapped_mock = SilentMock()
+			wrapped_mock = raw_mock()
 		if not isinstance(wrapped_mock, SilentMock):
-			raise TypeError("expected SilentMock, got %s" % (wrapped_mock.__class__,))
+			raise TypeError("expected SilentMock, got %s" % (wrapped_mock.__class__.__name__,))
 		self._real_set(_mock = wrapped_mock)
 	
 	# delegate getting and setting to SilentMock
@@ -105,6 +105,10 @@ class MockWrapper(RealSetter):
 	
 	def child(self, val):
 		return mock_wrapper(getattr(self.mock, val))
+	
+	def with_special(self, **kwargs):
+		self.mock._mock_set_special(**kwargs)
+		return self
 		
 	# convenience methods for dsl-like chaining
 	def returning(self, val):
@@ -132,7 +136,7 @@ class MockWrapper(RealSetter):
 	def with_methods(self, *methods, **kwmethods):
 		self._with_children(*methods)
 		for key in kwmethods:
-			kwmethods[key] = SilentMock(return_value = kwmethods[key])
+			kwmethods[key] = raw_mock(return_value = kwmethods[key])
 		return self.with_children(**kwmethods)
 	
 	def with_children(self, *children, **kwchildren):
