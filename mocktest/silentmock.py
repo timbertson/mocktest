@@ -25,10 +25,9 @@ class SilentMock(RealSetter):
 		self._real_set(_mock_dict = {
 					'action': None,
 					'return_value':DEFAULT,
-					'attrs':{},
+					'name':'unnamed mock',
 					'_children':{},
 					'_modifiable_children':True,
-					'name':'unnamed mock',
 					'_return_value_provided':False,
 				})
 		self._mock_reset()
