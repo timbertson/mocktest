@@ -38,7 +38,6 @@ dependencies or simulate external conditions in your program so you can focus
 on unit-level testing.
 
 ---
-<!--tableofcontents-->
 
 # mocktest
 
