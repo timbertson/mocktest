@@ -1,11 +1,11 @@
-## mocktest
-... is a powerful and easy-to-use alternative to Michael Foord's popular Mock
-module.
+## mocktest (version 0.2)
+... is a powerful and easy-to-use mocking library, inspired by rspec and
+similar in many ways to Michael Foord's popular Mock module.
 
-The main differences are:
+The main features are:
  - powerful expectation matching behaviour for mock objects
- - automatic verification of expectations
- - automatic rollback of objects after each test
+ - automatic verification of expectations (before each test's tearDown)
+ - automatic rollback of inserted mock objects after each test
 
 It's released under the BSD licence (see the LICENCE file).
 
@@ -20,10 +20,11 @@ Cheese shop entry:
 
 ### Where did it come from?
 I am a big fan of rspec, but less of a fan of ruby as a whole.
-I wanted a to use rspec's powerful `should_receive()` and associated matchers with my python mock objects.
+I wanted a to use rspec's powerful `should_receive()` and associated matchers
+with my python mock objects.
 
 mocktest is by no means a port of rspec - it is smaller and simpler, and a lot
-more pythonic
+more pythonic.
 
 ### what *are* mocks?
 
@@ -57,7 +58,8 @@ Where additional args can be:
  ** Fails unless the arguments provided to the exception constructor match the
     given args
  * `message="some string"`
- ** Fails unless the error message (i.e. str(exception)) is equal to this message
+ ** Fails unless the error message (i.e. str(exception)) is equal to this
+    message
  * `matches="string"` or `matches=re.compile("match_string", custom_flags)`
  ** Just like message, except a regex.search is required to return a match
     instead of requiring the strings to be identical
@@ -181,16 +183,26 @@ relate to attributes:
 called. This overwrites the mock's action attribute, and makes return_value
 irrelevant.
 
+
+By default, calling `raw_mock.some_attribute` will force `some_attribute` to be
+added to the mock. If you don't want this behaviour, you can lock down the mock
+using:
+
+	mock_wrapper.frozen()
+
+This will raise an `AttributeError` when any new attribute is accessed (or set)
+on the mock.
+
 	mock_wrapper().with_children('x', 'y', z='zed')
 	mock_wrapper().with_methods('x','y', z='zed')
 	mock_wrapper().with_spec(some_object)
 
-Children and methods are similar. They take in any number of string arguments and
-keyword arguments. String arguments ensure that an attribute of that name exists
-on the mock. Keyword arguments specify its value, as well.
+Children and methods are similar. They take in any number of string arguments
+and keyword arguments. String arguments ensure that an attribute of that name
+exists on the mock. Keyword arguments specify its value, as well.
 
-The difference between methods and children is that the value of a method is
-used for a child's return_value:
+The difference between `methods` and `children` is that the value of a method
+is used for a child's return_value:
 
 	>>> wrapper = mock_wrapper().with_methods('y', z='zed')
 	>>> wrapper.mock.z()
@@ -224,14 +236,13 @@ If you want to get advanced, you can also override special methods on a mock:
 
 You can't override `__str__` or `__init__` (but there's little point to those),
 and you also can't override `__getattribute__` or `__setattr__`. Are you that
-much of a massochist?
+much of a masochist?
 
 ### Expectations
 
- * #TODO: update these for the 0.2 syntax
-
-Having said that mocktest is not rspec, here are a bunch of useful examples
-ported from the [rspec documentation](http://rspec.info/documentation/mocks/message_expectations.html)
+Having earlier said that mocktest is not rspec, here are a bunch of useful
+examples ported from the
+[rspec documentation](http://rspec.info/documentation/mocks/message_expectations.html)
 
 The basic setup of a test case is identical to using unittest.TestCase:
 
@@ -252,53 +263,66 @@ The basic setup of a test case is identical to using unittest.TestCase:
 
 #### Expecting calls
 
-	myobj = Mock()
-	myobj.action.is_expected
+	mock_os = mock_on(os)
+	mock_os.system.is_expected
 
-This will fail your test unless myobj.action() is called at least once during
-the current test case (the check is made right before the tearDown() method is
-executed)
+This will fail your test unless os.system() is called at least once during
+the current test case (the check is made right before the `tearDown()` method
+is executed)
+
+If you don't want an anchored mock, you can use:
+
+	wrapper = mock_wrapper()
+	raw_mock = wrapper.mock
+	wrapper.is_expected
+
+You can then pass raw_mock into a function and ensure that it is called. But
+you should **not** set `os.system = raw_mock`. This will change `os.system`
+for the life of your tests, and will almost certainly mess up the rest of your
+test cases. That is why the `mock_on()` function exists to automatically
+clean up your mocks.
 
 #### Multiplicites of calls
 
 The default `is_expected` ensures that your method is called at least once.
 There are other options:
 
-	myobj.action.is_expected.once() # once (and no more)
-	myobj.action.is_expected.twice()
-	myobj.action.is_expected.thrice() # (isn't thrice a great word?)
+	mock_anchor.method.is_expected.no_times() # shouldn't be called
+	mock_anchor.method.is_expected.once() # once (and no more)
+	mock_anchor.method.is_expected.twice()
+	mock_anchor.method.is_expected.thrice() # (isn't thrice a great word?)
 
-	myobj.action.is_expected.exactly(4).times
-	myobj.action.is_expected.at_least(10).times
-	myobj.action.is_expected.at_most(2).times
+	mock_anchor.method.is_expected.exactly(4).times
+	mock_anchor.method.is_expected.at_least(10).times
+	mock_anchor.method.is_expected.at_most(2).times
 
 this also works just fine:
 
-	myobj.action.is_expected.at_most(2)
+	mock_anchor.method.is_expected.at_most(2)
 
 ("times" is unnecessary, but it helps for readability)
 
 #### Expecting Arguments
 
-	myobj.action.is_expected.with(<args>)
+	mock_anchor.method.is_expected.with(<args>)
 
 e.g:
 
-	myobj.action.is_expected.with_args(1, 2, 3)
-	myobj.action.is_expected.with_args(1, 2, 3, foo='bar').once()
-	myobj.action.is_expected.with_args() # No arguments allowed
+	mock_anchor.method.is_expected.with_args(1, 2, 3)
+	mock_anchor.method.is_expected.with_args(1, 2, 3, foo='bar').once()
+	mock_anchor.method.is_expected.with_args() # No arguments allowed
 
 *Note:* When adding conditions to a call, the multiplicity (number of
 calls) is checked _after_ the other conditions.
 This means that while the following will fail:
 
-	myobj.action.is_expected.once()
+	mock_anchor.method.is_expected.once()
 	myobj.action('a')
 	myobj.action('b')
 
 this will succeed:
 
-	myobj.action.is_expected.once().with('a')
+	mock_anchor.method.is_expected.once().with('a')
 	myobj.action('a')
 	myobj.action('b')
 
@@ -306,17 +330,17 @@ This is the same way that rspec works, and it is the most flexible,
 since you can always put a bound on the total invocations by adding a
 non-conditional multiplicity check:
 
-	myobj.action.is_expected.twice()
+	mock_anchor.method.is_expected.twice()
 
-(you can apply as many `is_expected`'s to a single function as you like)
+(you can apply as many `is_expected`'s to a single mock as you like)
 
 #### Argument Constraints
 
 When you don't know the exact arguments, you can supply a checking function.
-If this function does not return True, the expectation fails
+If this function does not return True, the expectation fails:
 
-	myobj.action.is_expected.where_args(lambda arg1, arg2: arg1 == arg2)
-	myobj.action.is_expected.where_args(lambda arg: isinstance(arg, dict))
+	mock_anchor.method.is_expected.where_args(lambda arg1, arg2: arg1 == arg2)
+	mock_anchor.method.is_expected.where_args(lambda arg: isinstance(arg, dict))
 
 It doesn't have to be an inline lambda expression:
 
@@ -327,14 +351,50 @@ It doesn't have to be an inline lambda expression:
 			return False
 		return True
 		
-	myobj.action.is_expected.where_args(check_args)
+	mock_anchor.method.is_expected.where_args(check_args)
 
 #### Post-checking
-Specifying your expectations before anything happens is sometimes not the best or
-easiest thing to do.
+Specifying your expectations before anything happens is sometimes not the best
+(or easiest) thing to do.
 
- * #TODO: fill in mock.called and get_calls
+It's possible to just inspect the state of a mock to see what's happened to it
+so far. `called` is almost identical to `is_expected`. Unlike an expectation
+object, The result of a `called` expression should be compared to `True` or
+`False` to check whether the expressed call(s) did indeed happen.
 
+	self.assertTrue(mock_wrapper.called.once().with_args('foo'))
+	if not mock_wrapper.called.once():
+		assert False, "Things went bad!"
+
+But the most useful feature of of `called` is its ability to retrieve the calls
+that the mock has received. So in the following example:
+
+	wrapper = mock_wrapper()
+	mock = wrapper.mock
+
+	mock('a', b='foo')
+	mock('b')
+	mock(b='bar')
+	
+	>>> wrapper.called.thrice().get_calls()
+	[(('a',), {'b': 'foo'}), ('b',), (None, {'b': 'bar'})]
+
+Note that where a call has no arguments or has no keyword-arguments, the
+first or second element (respectively) in the call tuple is None instead of an
+empty tuple or dict. This is mostly for readability, because there are already
+enough parentheses in the mix.
+
+**Note**: get_calls will fail if the assertions made after `called` are not met.
+e.g: if mock has been called once and you ask for
+`wrapper.called.twice().get_calls()`, then you'll get an AssertionError.
+
+If you're only expecting one call, you can use `get_args`:
+
+	mock(b='bar')
+	>>> wrapper.called.once().get_args()
+
+**Note** that `get_args` requires you to explicitly specify `once()`.
+	
 ---
 # Testing the mocktest library
 I use [nosetests](http://code.google.com/p/python-nose/), and just run it from
