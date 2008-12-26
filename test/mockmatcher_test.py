@@ -50,7 +50,7 @@ class TestPySpec(TestCase):
 		self.assertTrue(wrapper.child('a').called)
 		self.assertFalse(wrapper.child('b').called)
 	
-	def test_should_have_once_twice_and_thrice_aliases(self):
+	def test_should_have_no_times_once_twice_and_thrice_aliases(self):
 		wrapper = mock_wrapper()
 		mock = wrapper.mock
 		mock.a()
@@ -73,6 +73,8 @@ class TestPySpec(TestCase):
 		self.assertFalse(wrapper.child('c').called.once())
 		self.assertFalse(wrapper.child('c').called.twice())
 		self.assertTrue(wrapper.child('c').called.thrice())
+
+		self.assertTrue(wrapper.child('d').called.no_times())
 		
 	def test_should_track_number_of_calls_with_arguments(self):
 		wrapper = mock_wrapper()

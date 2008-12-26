@@ -95,6 +95,10 @@ class MockMatcher(object):
 	times = property(__noop)
 	time = property(__noop)
 	
+	def no_times(self):
+		"""alias for exactly(0).times"""
+		return self.exactly(0)
+		
 	def once(self):
 		"""alias for exactly(1).times"""
 		return self.exactly(1)
