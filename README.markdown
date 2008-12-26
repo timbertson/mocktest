@@ -38,7 +38,6 @@ dependencies or simulate external conditions in your program so you can focus
 on unit-level testing.
 
 ---
-
 # mocktest
 
 ## TestCase
@@ -65,6 +64,7 @@ Where additional args can be:
 
 This was adapted from [http://code.activestate.com/recipes/307970/](http://code.activestate.com/recipes/307970/)
 
+---
 ## mocks
 
 mocktest is still a young framework, and is likely to evolve. While the
@@ -129,6 +129,7 @@ and if you just have a raw mock object, you can get a wrapper for it by calling:
 
 This might seem a little confusing, but hopefully the examples below will help.
 
+---
 ### Mock customisation
 
 A mock has a few options for specifying its behaviour:
@@ -237,6 +238,7 @@ You can't override `__str__` or `__init__` (but there's little point to those),
 and you also can't override `__getattribute__` or `__setattr__`. Are you that
 much of a masochist?
 
+---
 ### Expectations
 
 Having earlier said that mocktest is not rspec, here are a bunch of useful
