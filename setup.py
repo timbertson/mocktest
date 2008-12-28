@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from setuptools import setup
+from setuptools import *
 
 setup(
 	name='mocktest',
@@ -9,7 +9,7 @@ setup(
 	author='Tim Cuthbertson',
 	author_email='tim3d.junk+mocktest@gmail.com',
 	url='http://github.com/gfxmonk/mocktest/tree',
-	packages=['mocktest'],
+	packages=find_packages(exclude=["test"]),
 	
 	long_description="""\
 	mocktest is a mocking and expectation test library for python.
