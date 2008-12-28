@@ -28,18 +28,19 @@ class TestAutoSpecVerification(unittest.TestCase):
 		mocktest._teardown()
 	
 	def run_suite(self, class_):
+		mocktest._teardown()
 		suite = unittest.makeSuite(class_)
 		result = unittest.TestResult()
 		suite.run(result)
+		ret = result
+		mocktest._setup()
 		return result
 	
 	def run_method(self, test_func):
 		class SingleTest(mocktest.TestCase):
 			test_method = test_func
 		
-		mocktest._teardown()
 		result = self.run_suite(SingleTest)
-		mocktest._setup()
 		
 		if not result.wasSuccessful():
 			print result.errors
@@ -82,6 +83,20 @@ class TestAutoSpecVerification(unittest.TestCase):
 		
 		self.assert_(self.run_method(test_failure).wasSuccessful())
 		assert_desc(self.output.called.with_('[[[ IGNORED ]]] ... '))
+	
+	def test_expectation_failures_do_not_cause_further_failures(self):
+		class myTest(mocktest.TestCase):
+			def test_a(self):
+				foo = mocktest.mock_wrapper()
+				foo.expects('blah').once()
+			def test_b(self):
+				pass
+			def test_c(self):
+				pass
+		results = self.run_suite(myTest)
+		self.assertEqual(3, results.testsRun)
+		self.assertEqual(0, len(results.failures))
+		self.assertEqual(1, len(results.errors))
 		
 	def test_pending(self):
 		callback = raw_mock()

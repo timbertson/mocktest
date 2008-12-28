@@ -68,9 +68,11 @@ class MockWrapper(RealSetter):
 		if cls._all_expectations is None:
 			raise RuntimeError("%s._teardown been called twice in a row"
 				% (cls.__name__,))
-		for expectation in cls._all_expectations:
-			assert expectation, expectation
-		cls._all_expectations = None
+		try:
+			for expectation in cls._all_expectations:
+				assert expectation, expectation
+		finally:
+			cls._all_expectations = None
 
 	def __called_matcher(self):
 		return MockMatcher(self._mock)
