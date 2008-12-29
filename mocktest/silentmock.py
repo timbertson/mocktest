@@ -5,6 +5,7 @@ inspected passing the silent mock into a MockWrapper object.
 """
 
 from lib.realsetter import RealSetter
+from callrecord import CallRecord
 
 DEFAULT = object()
 
@@ -88,7 +89,7 @@ class SilentMock(RealSetter):
 		self._mock_set(_return_value_provided=False)
 		
 	def __call__(self, *args, **kwargs):
-		self._mock_get('call_list').append((args, kwargs))
+		self._mock_get('call_list').append(CallRecord(args, kwargs))
 		retval_done = False
 		if self._mock_get('action') is not None:
 			side_effect_ret_val = self._mock_get('action')(*args, **kwargs)

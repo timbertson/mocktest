@@ -1,5 +1,6 @@
 import os
 import sys
+import re
 
 import helper
 from mocktest import TestCase
@@ -209,8 +210,31 @@ class MockObjectAndWrapperTest(TestCase):
 		self.assertRaises(AttributeError, lambda: clean_wrapper.mock.__len__)
 		self.assertRaises(TypeError, lambda: len(clean_wrapper.mock))
 		self.assertEqual(str(clean_wrapper.mock), 'clean')
-		
 	
+	def test_should_show_where_calls_were_made(self):
+		wrapper = mock_wrapper()
+		mock = wrapper.mock
+		
+		mock(1,2,345)
+		print str(wrapper.called)
+		self.assertTrue(re.search('// mock_test\.py:[0-9]+ +:: mock\(1,2,345\)', str(wrapper.called)))
+
+	def test_should_compare_call_records_to_tuples_and_other_call_records(self):
+		args = (1,2,3)
+		kwargs = {'x':123, 'y':456}
+		CallRecord = mocktest.silentmock.CallRecord
+		self.assertEqual(
+			mocktest.silentmock.CallRecord(args, kwargs),
+			mocktest.silentmock.CallRecord(args, kwargs))
+
+		self.assertEqual(
+			mocktest.silentmock.CallRecord(args, kwargs),
+			(args, kwargs))
+
+		self.assertEqual(
+			(args, kwargs),
+			mocktest.silentmock.CallRecord(args, kwargs))
+		
 	def test_call_recording(self):
 		wrapper = mock_wrapper()
 		mock = wrapper.mock
@@ -219,8 +243,8 @@ class MockObjectAndWrapperTest(TestCase):
 		self.assertEquals(mock(), result, "different result from consecutive calls")
 		self.assertEquals(wrapper.call_list,
 			[
-				((),{}), # called with nothing
-				((),{}), # (twice)
+				None, # called with nothing
+				None, # (twice)
 			])
 	
 		wrapper.reset()
@@ -230,6 +254,6 @@ class MockObjectAndWrapperTest(TestCase):
 		mock('second_call', 'arg2', call_=2)
 		self.assertEquals(wrapper.call_list,
 			[
-				(('first_call',),{}),
+				('first_call',),
 				(('second_call','arg2'), {'call_':2}),
 			])

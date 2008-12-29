@@ -224,17 +224,22 @@ class TestAutoSpecVerification(unittest.TestCase):
 		m(foo='bar')
 		m()
 		m(1, foo=2)
-		self.assertEqual(
-			repr(mock_wrapper(m).called.once()),
-			'\n'.join([
-				'Mock "ze_mock" did not match expectations:',
-				' expected exactly 1 calls',
-				' received 4 calls with arguments:',
-				'  1:   1, 2, 3',
-				'  2:   foo=\'bar\'',
-				'  3:   No arguments',
-				'  4:   1, foo=2'])
-		)
+		
+		line_agnostic_repr = [
+			re.sub('\.py:[0-9 ]{3} ', '.py:LINE ', line)
+			for line in repr(mock_wrapper(m).called.once()).split('\n')]
+		
+		expected_lines = [
+			'Mock "ze_mock" did not match expectations:',
+			' expected exactly 1 calls',
+			' received 4 calls with arguments:',
+			'  1:   1, 2, 3                  // mocktest_test.py:LINE :: m(1,2,3)',
+			"  2:   foo='bar'                // mocktest_test.py:LINE :: m(foo='bar')",
+			'  3:   No arguments             // mocktest_test.py:LINE :: m()',
+			'  4:   1, foo=2                 // mocktest_test.py:LINE :: m(1, foo=2)']
+		
+		for got, expected in zip(line_agnostic_repr, expected_lines):
+			self.assertEqual(got, expected)
 
 class MockTestTest(mocktest.TestCase):
 	def test_should_do_expectations(self):
@@ -247,15 +252,5 @@ class MockTestTest(mocktest.TestCase):
 		# pretend we're in a new test (wipe the expected calls register)
 		mocktest.mock.MockWrapper._all_expectations = []
 	
-	# def test_exposed_items(self):
-	# 	expected_items = [
-	# 	]
-	# 	got_items = dir(mocktest)
-	# 	
-	# 	for item in expected_items:
-	# 		if item not in got_items:
-	# 			raise AssertionError("expected item %s is not exposed in mocktest" % (item,))
-	# 	
-
 if __name__ == '__main__':
 	unittest.main()

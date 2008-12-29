@@ -1,3 +1,5 @@
+from callrecord import CallRecord
+
 class MockMatcher(object):
 	_multiplicity = None
 	_multiplicity_description = None
@@ -19,7 +21,7 @@ class MockMatcher(object):
 		"""
 		self.__assert_not_set(self._cond_args, "argument condition")
 		self._cond_args = self._args_equal_func(args, kwargs)
-		self._cond_description = "with arguments equal to: %s" % (self._describe_arg_set((args, kwargs)))
+		self._cond_description = "with arguments equal to: %s" % (CallRecord(args, kwargs, stack=False),)
 		return self
 	with_ = with_args
 	
@@ -73,7 +75,7 @@ class MockMatcher(object):
 		"""
 		if not self._matches():
 			raise AssertionError, self
-		return [self._clean_args(call) for call in self.call_list if self._args_match(call)]
+		return filter(self._args_match, self.call_list)
 	
 	def get_args(self):
 		"""
@@ -150,7 +152,7 @@ class MockMatcher(object):
 		if self._cond_args is None:
 			return True
 		
-		args, kwargs = call_args
+		args, kwargs = call_args.raw_tuple
 		return self._cond_args(*args, **kwargs)
 	
 	def _multiplicities_match(self, num_calls):
@@ -181,20 +183,6 @@ class MockMatcher(object):
 			return a == args and k == kwargs
 		return check
 
-	
-	def _clean_args(self, call_args):
-		"""
-		Replaces empty args with None, and returns a 1-length
-		tuple of (args,) if no kwargs appear.
-		This is for the sake of making test assertions more readable
-		"""
-		args, kwargs = call_args
-		if len(args) == 0:
-			args = None
-		if len(kwargs) == 0:
-			return args
-		return (args, kwargs)
-
 	# multiplicity-checking operators
 	def _eq(self, a, b):
 		return a == b
@@ -214,17 +202,6 @@ class MockMatcher(object):
 			self.describe_reality())
 		
 	# fluffy user-visible expectation descriptions
-	def _describe_arg_set(self, arg_set):
-		arg_set = map(lambda x: None if x is None or len(x) == 0 else x, arg_set)
-		args, kwargs = arg_set
-		
-		if arg_set == [None, None]:
-			return "No arguments"
-		sep = ", "
-		args = None if args is None else sep.join(map(repr, args))
-		kwargs = None if kwargs is None else sep.join(["%s=%r" % (key, val) for key, val in kwargs.items()])
-		return sep.join(filter(lambda x: x is not None, (args, kwargs)))
-
 	def describe(self):
 		desc = "%s calls" % (self._multiplicity_description,)
 		if self._cond_description is not None:
@@ -239,6 +216,6 @@ class MockMatcher(object):
 			desc += " with arguments:"
 			i = 1
 			for arg_set in call_list:
-				desc += "\n  %s:   %s" % (i, self._describe_arg_set(arg_set))
+				desc += "\n  %s:   %s" % (i, arg_set)
 				i += 1
 		return desc
