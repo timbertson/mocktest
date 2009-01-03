@@ -40,6 +40,17 @@ class MockAnchorTest(TestCase):
 		self.assertTrue(isinstance(real_dict['c'], mock_class))
 		self.assertTrue(isinstance(real_object.c, mock_class))
 	
+	def test_should_not_clobber_anchors_for_the_same_parent(self):
+		anchor_a = mock_on(real_object)
+		anchor_a.foo
+		self.assertEqual(anchor_a._children.keys(), ['foo'])
+
+		anchor_b = mock_on(real_object)
+		self.assertEqual(anchor_b._children.keys(), ['foo'])
+		
+		self.assertTrue(anchor_a, anchor_b)
+		self.assertTrue(isinstance(anchor_a, mocktest.mockanchor.MockAnchor))
+	
 	def test_should_reinstate_original_objects_on_teardown(self):
 		mock_on(real_object).a = 'mocky a'
 		mock_on(real_dict)['a'] = 'mocky a'
@@ -57,6 +68,13 @@ class MockAnchorTest(TestCase):
 		self.downup()
 		self.assertRaises(AttributeError, lambda: real_object.c)
 		self.assertRaises(KeyError, lambda: real_dict['c'])
+	
+	def test_should_disallow_replacing_mocks(self):
+		obj = RealClass()
+		obj.foo = mock_wrapper().mock
+		def set_foo():
+			mock = mock_on(obj).foo
+		self.assertRaises(TypeError, set_foo)
 	
 	def test_should_set_original_objects_to_none_if_they_cant_be_deleted(self):
 		obj = NoDeletesObject()

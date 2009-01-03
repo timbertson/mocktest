@@ -23,12 +23,20 @@ def mock_on(parent, quiet = False):
 
 class MockAnchor(RealSetter):
 	_active = []
-	def __init__(self, parent, quiet=False):
+	def __new__(cls, parent, quiet=False):
+		for anchor in cls._active:
+			if anchor._parent is parent:
+				return anchor
+		
+		# this should use super, but I've no idea how...
+		supertype = RealSetter
+		self = supertype.__new__(cls)
 		self._init_records()
 		self._real_set(_parent = parent)
 		self._real_set(_quiet = quiet)
 		self.__class__._active.append(self)
-	
+		return self
+		
 	def _init_records(self):
 		self._real_set(_children = {})
 		self._real_set(_items = {})
@@ -44,7 +52,7 @@ class MockAnchor(RealSetter):
 	def _backup_child(self, name, in_dict):
 		try:
 			# if it's replacing a real object, store it here for later
-			real_child = getattr(self._parent, name) if not in_dict else self._parent[name]
+			real_child = self._accessor_func(in_dict)(self._parent, name)
 		except (AttributeError, KeyError):
 			if not self._quiet:
 				print >> sys.stderr, "Warning: object %s has no %s \"%s\"" % (self._parent, "key" if in_dict else "attribute", name)
@@ -70,12 +78,15 @@ class MockAnchor(RealSetter):
 			mock._reset()
 		cls._active = []
 	
-	# interchangeable deletion and setter methods
+	# interchangeable deletion, getter and setter methods
 	def _insertion_func(self, in_dict):
 		return self._setitem if in_dict else self._setattr
 
 	def _deletion_func(self, in_dict):
 		return self._delitem if in_dict else self._delattr
+	
+	def _accessor_func(self, in_dict):
+		return self._getitem if in_dict else self._getattr
 		
 	@staticmethod
 	def _setitem(target, name, val):
@@ -84,6 +95,14 @@ class MockAnchor(RealSetter):
 	@staticmethod
 	def _setattr(target, name, val):
 		setattr(target, name, val)
+		
+	@staticmethod
+	def _getitem(target, name):
+		return target[name]
+	
+	@staticmethod
+	def _getattr(target, name):
+		return getattr(target, name)
 	
 	@staticmethod
 	def _delitem(target, name):
