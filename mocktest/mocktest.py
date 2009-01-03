@@ -32,40 +32,69 @@ def _compose(hook, func):
 	run_hook.__name__ = func.__name__
 	return run_hook
 
-
-def pending(function_or_reason):
-	def wrap_func(func, reason = None):
-		reason_str = "" if reason is None else " (%s)" % reason
-		def actually_call_it(*args, **kwargs):
-			fn_name = func.__name__
-			success = False
-			try:
-				func(*args, **kwargs)
-				success = True
-				print >> sys.stderr, "%s%s PASSED unexpectedly " % (fn_name, reason_str),
-				print "%s%s PASSED unexpectedly " % (fn_name, reason_str),
-			except StandardError:
-				print >> sys.stderr, "[[[ PENDING ]]]%s ... " % (reason_str,)
-				print "[[[ PENDING ]]]%s ... " % (reason_str,)
-			if success:
-				raise AssertionError, "%s%s PASSED unexpectedly " % (fn_name, reason_str)
-		actually_call_it.__name__ = func.__name__
-		return actually_call_it
+def _maybe_decorator(decorator):
+	"""
+	_maybe_decorator takes a decorator function and generates
+	a new decorator. if the returned decorator is simply used to decorate
+	a function:
 	
-	if callable(function_or_reason):
-		# we're decorating a function
-		return wrap_func(function_or_reason)
-	else:
-		# we've been given a description - return a decorator
-		def decorator(func):
-			return wrap_func(func, function_or_reason)
-		return decorator
+		@decorate
+		def foo():
+			pass
 
-def ignore(func):
-	def ignored_test(*args, **kwargs):
-		print "[[[ IGNORED ]]] ... "
-		print >> sys.stderr, "[[[ IGNORED ]]] ... "
-	return ignored_test
+	it will call the decorator with the function as its first argument
+	(as in a standard decorator)
+	
+	However, if the generated (returned) decorator is given arguments:
+
+		@decorate('some arg')
+		def foo():
+			pass
+
+	then the given decorator will be called with the decorated function
+	in addition to the additional arguments passed given at decoration
+	time, i.e:
+		
+		decorator(foo, 'some_arg')
+	"""
+	
+	def decorate(function_or_arg1, *args, **kwargs):
+		if callable(function_or_arg1) and len(args) == 0 and len(kwargs) == 0:
+			return decorator(function_or_arg1)
+		else:
+			def decorator_setup(function, *args, **kwargs):
+				return decorator(function, function_or_arg1, *args, **kwargs)
+			return decorator_setup
+	decorate.__name__ = decorator.__name__
+	return decorate
+
+def _pending_decorator(function, reason = None):
+	reason_str = "" if reason is None else " (%s)" % reason
+	def actually_call_it(*args, **kwargs):
+		fn_name = function.__name__
+		success = False
+		try:
+			function(*args, **kwargs)
+			success = True
+			print >> sys.stderr, "%s%s PASSED unexpectedly " % (fn_name, reason_str),
+			print "%s%s PASSED unexpectedly " % (fn_name, reason_str),
+		except StandardError:
+			print >> sys.stderr, "[[[ PENDING ]]]%s ... " % (reason_str,)
+			print "[[[ PENDING ]]]%s ... " % (reason_str,)
+		if success:
+			raise AssertionError, "%s%s PASSED unexpectedly " % (fn_name, reason_str)
+	actually_call_it.__name__ = function.__name__
+	return actually_call_it
+pending = _maybe_decorator(_pending_decorator)
+
+def _ignore_decorator(function, reason = None):
+	reason_str = "" if reason is None else " (%s)" % reason
+	def actually_call_it(*args, **kwargs):
+		print >> sys.stderr, "[[[ IGNORED ]]]%s ... " % (reason_str,)
+		print "[[[ IGNORED ]]]%s ... " % (reason_str,)
+	actually_call_it.__name__ = function.__name__
+	return actually_call_it
+ignore = _maybe_decorator(_ignore_decorator)
 
 class TestCase(unittest.TestCase):
 	pending = globals()['pending']

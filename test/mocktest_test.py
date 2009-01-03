@@ -84,6 +84,17 @@ class TestAutoSpecVerification(unittest.TestCase):
 		self.assert_(self.run_method(test_failure).wasSuccessful())
 		assert_desc(self.output.called.with_('[[[ IGNORED ]]] ... '))
 	
+	def test_should_ignore_with_description(self):
+		callback = raw_mock()
+		mock_wrapper(callback).is_expected.exactly(0).times
+			
+		@ignore('not done yet')
+		def test_failure(self):
+			callback('a')
+		
+		self.assert_(self.run_method(test_failure).wasSuccessful())
+		assert_desc(self.output.called.with_('[[[ IGNORED ]]] (not done yet) ... '))
+	
 	def test_expectation_failures_do_not_cause_further_failures(self):
 		class myTest(mocktest.TestCase):
 			def test_a(self):
