@@ -5,7 +5,7 @@ import re
 import helper
 from mocktest import TestCase
 from mocktest import raw_mock, mock_wrapper
-import mocktest
+import mocktest as mocktest
 
 mock_class = mocktest.silentmock.SilentMock
 
@@ -120,9 +120,9 @@ class MockObjectAndWrapperTest(TestCase):
 		wrapper = mock_wrapper().raising(SystemError)
 		self.assertRaises(SystemError, wrapper.mock)
 	
-		# instance
+		# instance (with random extra args)
 		wrapper = mock_wrapper().raising(SystemError("this simply will not do"))
-		self.assertRaises(SystemError, wrapper.mock)
+		self.assertRaises(SystemError, lambda: wrapper.mock('a','b',foo='blah'))
 	
 	def test_children_and_methods_can_coexist(self):
 		wrapper = mock_wrapper().with_children(a='a').unfrozen().with_methods(b='b')

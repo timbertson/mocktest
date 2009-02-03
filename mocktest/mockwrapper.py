@@ -126,7 +126,7 @@ class MockWrapper(RealSetter):
 		return self
 
 	def raising(self, ex):
-		def mock_raise():
+		def mock_raise(*args, **kwargs):
 			raise ex
 		return self.with_action(mock_raise)
 
