@@ -5,7 +5,8 @@ import re
 import helper
 from mocktest import TestCase
 from mocktest import raw_mock, mock_wrapper
-import mocktest as mocktest
+from mocktest import MockError
+import mocktest
 
 mock_class = mocktest.silentmock.SilentMock
 
@@ -138,6 +139,7 @@ class MockObjectAndWrapperTest(TestCase):
 		self.assertRaises(SystemError, wrapper.mock)
 		self.assertEquals(True, wrapper.called)
 		
+		wrapper = mock_wrapper()
 		results = []
 		def effect(n):
 			results.append('call %s' % (n,))
@@ -152,39 +154,17 @@ class MockObjectAndWrapperTest(TestCase):
 		wrapper = mock_wrapper().with_action(sentinel)
 		self.assertEquals(wrapper.action, sentinel)
 	
-	def test_side_effect_return_used_when_return_value_not_specified(self):
+	def test_side_effect_return_used(self):
 		def return_foo():
 			return "foo"
 		wrapper = mock_wrapper().with_action(return_foo)
 		self.assertEqual(wrapper.mock(), 'foo')
-	
-	def test_side_effect_can_change_mock_return_value(self):
-		wrapper = mock_wrapper()
-		def modify_it():
-			wrapper.return_value = 'foo'
-		wrapper.action = modify_it
-		self.assertEqual(wrapper.mock(), 'foo')
-	
-	def test_side_effect_can_remove_mock_return_value_and_replace_it(self):
-		wrapper = mock_wrapper()
-		wrapper.return_value = "not me"
-		def modify_it():
-			del wrapper.return_value
-			return "me instead"
-		wrapper.action = modify_it
-		self.assertEqual(wrapper.mock(), "me instead")
 	
 	def test_side_effect_return_val_used_even_when_it_is_none(self):
 		def return_foo():
 			print "i've been called!"
 		wrapper = mock_wrapper().with_action(return_foo)
 		self.assertEqual(wrapper.mock(), None)
-	
-	def test_side_effect_return_not_used_when_return_value_specified(self):
-		def return_foo():
-			return "foo"
-		wrapper = mock_wrapper().returning('bar').with_action(return_foo)
-		self.assertEqual(wrapper.mock(), 'bar')
 	
 	def test_should_allow_setting_of_magic_methods(self):
 		clean_wrapper = mock_wrapper().named('clean')
@@ -257,3 +237,48 @@ class MockObjectAndWrapperTest(TestCase):
 				('first_call',),
 				(('second_call','arg2'), {'call_':2}),
 			])
+
+# -- options that clobber each other:
+class ClobberTest(TestCase):
+	def setUp(self):
+		self.mock = mock_wrapper().named("bob")
+	
+	def test_should_not_let_you_overwrite_return_value_with_action(self):
+		self.mock.returning('foo')
+		self.assertRaises(MockError, lambda: self.mock.with_action(lambda x: x))
+
+	def test_should_not_let_you_overwrite_return_value_with_raises(self):
+		self.mock.returning('foo')
+		self.assertRaises(MockError, lambda: self.mock.raising(StandardError()), message =  "Cannot set action on mock 'bob': a return value has already been set")
+
+	def test_should_not_let_you_overwrite_raise_with_action(self):
+		self.mock.raising(StandardError())
+		self.assertRaises(MockError, lambda: self.mock.returning(1), message =  "Cannot set return value on mock 'bob': an action has already been set")
+
+	def test_should_not_let_you_overwrite_raise_with_return_value(self):
+		self.mock.raising(StandardError())
+		self.assertRaises(MockError, lambda: self.mock.returning(1), message =  "Cannot set return value on mock 'bob': an action has already been set")
+
+	def test_should_not_let_you_overwrite_action_with_return_value(self):
+		self.mock.with_action(lambda: 1)
+		self.assertRaises(MockError, lambda: self.mock.returning(1), message =  "Cannot set return value on mock 'bob': an action has already been set")
+
+	def test_should_not_let_you_overwrite_action_with_raise(self):
+		self.mock.with_action(lambda: 1)
+		self.assertRaises(MockError, lambda: self.mock.raising(1), message =  "Cannot set action on mock 'bob': an action has already been set")
+	
+	def test_should_let_you_clear_actions(self):
+		self.mock.with_action(lambda a: a)
+		del self.mock.action
+		self.mock.with_action(lambda a: a + 2)
+		del self.mock.action
+		
+		self.mock.returning(1)
+		del self.mock.return_value
+		self.mock.returning(2)
+		del self.mock.return_value
+		
+		self.mock.raising(StandardError())
+		del self.mock.action
+		self.mock.raising(RuntimeError())
+		del self.mock.action

@@ -6,6 +6,7 @@ inspected passing the silent mock into a MockWrapper object.
 
 from lib.realsetter import RealSetter
 from callrecord import CallRecord
+from mockerror import MockError
 
 DEFAULT = object()
 
@@ -45,11 +46,26 @@ class SilentMock(RealSetter):
 		for attr, val in kwargs.items():
 			if not attr in self._mock_dict:
 				raise KeyError, "no such mock attribute: %s" % (attr,)
+			self._mock_assert_can_set(attr, val)
 			self._mock_dict[attr] = val
 			hookname = '_mock_set_%s_hook' % (attr,)
 			try:
 				self._real_get(hookname)(val)
 			except AttributeError: pass
+	
+	def _mock_has_a_result_set(self):
+		if self._mock_get('action', default=None) is not None:
+			return 'action'
+		elif self._mock_get('return_value', default=DEFAULT) is not DEFAULT:
+			return 'return_value'
+	
+	def _mock_assert_can_set(self, attr, val):
+		result_set = self._mock_has_a_result_set()
+		if attr in ['action', 'return_value'] and result_set is not None:
+			raise MockError("Cannot set %s on mock %r: %s has already been set" % (
+				attr.replace('_',' '),
+				self._mock_get('name'),
+				"a return value" if result_set == 'return_value' else 'an action'))
 
 	def _mock_set_special(self, **kwargs):
 		"""set special methods"""
@@ -71,7 +87,9 @@ class SilentMock(RealSetter):
 			# in order for special methods to be used
 			setattr(self.__class__, k, v)
 
-	def _mock_get(self, attr):
+	def _mock_get(self, attr, **kwargs):
+		if 'default' in kwargs:
+			return self._mock_dict.get(attr, kwargs['default'])
 		return self._mock_dict[attr]
 	
 	def _mock_del(self, attr):
@@ -85,8 +103,11 @@ class SilentMock(RealSetter):
 		self._mock_set(_return_value_provided=True)
 	
 	def _mock_del_return_value_hook(self):
-		self._mock_set(return_value=DEFAULT)
-		self._mock_set(_return_value_provided=False)
+		self._mock_dict['return_value'] = DEFAULT
+		self._mock_dict['_return_value_provided'] = False
+		
+	def _mock_del_action_hook(self):
+		self._mock_dict['action'] = None
 		
 	def __call__(self, *args, **kwargs):
 		self._mock_get('call_list').append(CallRecord(args, kwargs))

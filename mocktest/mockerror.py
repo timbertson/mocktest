@@ -1,0 +1,2 @@
+class MockError(StandardError):
+	pass
