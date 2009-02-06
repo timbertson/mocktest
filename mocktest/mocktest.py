@@ -139,6 +139,72 @@ class TestCase(unittest.TestCase):
 			desc = "Expected (%r) to be False" % (expr,)
 			super(TestCase, self).assertFalse(expr, desc)
 	
+	def assertEqual(self, a, b, desc = None):
+		"""
+		Enhanced assertEquals, prints out more information when
+		comparing two dicts or two arrays
+		"""
+		if a == b:
+			return
+		if desc is not None:
+			return super(TestCase, self).assertEqual(a, b, desc)
+		if (isinstance(a, list) and isinstance(b, list)) or (isinstance(a, tuple) and isinstance(b, tuple)):
+			self.__assertEqual_array(a, b)
+		elif isinstance(a, dict) and isinstance(b, dict):
+			self.__assertEqual_dict(a, b)
+		super(TestCase, self).assertEqual(a, b, desc)
+	assertEquals = assertEqual
+	
+	def __assertEqual_dict(self, a, b):
+		akeys, bkeys = sorted(a.keys()), sorted(b.keys())
+		if not akeys == bkeys:
+			raise AssertionError("%r != %r\ndict keys differ: %r != %r" % (a, b, akeys, bkeys))
+		a_and_not_b = self.__dict_differences_btwn(a, b)
+		b_and_not_a = self.__dict_differences_btwn(b, a)
+		raise AssertionError("%r != %r\ndifference between dicts: %r vs %r" % (a, b, a_and_not_b, b_and_not_a))
+	
+	def __assertEqual_array(self, a, b):
+		la, lb = len(a), len(b)
+		longest = max(la, lb)
+		def _raise(index, adesc, bdesc):
+			raise AssertionError("%r != %r\nlists differ at index %s:\n\t%s != %s" % (a, b, index, adesc, bdesc))
+		
+		if la != lb:
+			# length mismatch
+			nomore = '(no more values)'
+			if la < lb:
+				index = la
+				a_desc = nomore
+				b_desc = b[index]
+			else:
+				index=lb
+				a_desc = a[index]
+				b_desc = nomore
+			_raise(index, a_desc, b_desc)
+			
+		for i in range(0, longest):
+			same = False
+			if a[i] != b[i]:
+				_raise(i, repr(a[i]), repr(b[i]))
+			
+		akeys, bkeys = sorted(a.keys()), sorted(b.keys())
+		if not akeys == bkeys:
+			raise AssertionError("%r != %r\ndict keys differ: %r != %r" % (a, b, akeys, bkeys))
+		a_and_not_b = self.__dict_differences_btwn(a, b)
+		b_and_not_a = self.__dict_differences_btwn(b, a)
+	
+	def __dict_differences_btwn(self, a, b):
+		in_a_not_b = {}
+		for k,v in a.items():
+			same = False
+			try:
+				same = b[k] == v
+			except KeyError:
+				pass
+			if not same:
+				in_a_not_b[k] = v
+		return in_a_not_b
+	
 	def assertRaises(self, exception, func, message = None, args = None, matching=None):
 		"""
 		Enhanced assertRaises, able to:

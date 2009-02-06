@@ -1,8 +1,8 @@
 import unittest
 import re
 import sys
-sys.path.append('..')
 
+import helper
 import mocktest
 from mocktest import mock_wrapper, raw_mock, pending, ignore, expect
 
@@ -43,8 +43,8 @@ class TestAutoSpecVerification(unittest.TestCase):
 		result = self.run_suite(SingleTest)
 		
 		if not result.wasSuccessful():
-			print result.errors
-			print result.failures
+			print "ERRORS: %s" % (result.errors,)
+			print "FAILURES: %s" % (result.failures,)
 		return result
 		
 	def test_should_hijack_setup_and_teardown(self):
@@ -157,7 +157,98 @@ class TestAutoSpecVerification(unittest.TestCase):
 		print "runtime error is being raised..."
 		raise SomeError(*args, **kwargs)
 	
+	def test_assert_equal_should_be_friendly_for_arrays(self):
+		def arrayNE(s):
+			s.assertEqual([1,2,3], [1,4,3])
 			
+		result = self.run_method(arrayNE)
+		self.assertFalse(result.wasSuccessful())
+		failmsgs = result.failures[0][1].split('\n')
+		
+		print "failmsgs = %s" % (failmsgs,)
+		
+		self.assertTrue('AssertionError: [1, 2, 3] != [1, 4, 3]' in failmsgs)
+		self.assertTrue('lists differ at index 1:' in failmsgs)
+		self.assertTrue('\t2 != 4' in failmsgs)
+
+	def test_assert_equal_should_be_friendly_for_tuples(self):
+		def arrayNE(s):
+			s.assertEqual((1,2,3), (1,4,3))
+			
+		result = self.run_method(arrayNE)
+		self.assertFalse(result.wasSuccessful())
+		failmsgs = result.failures[0][1].split('\n')
+		
+		print "failmsgs = %s" % (failmsgs,)
+		
+		self.assertTrue('AssertionError: (1, 2, 3) != (1, 4, 3)' in failmsgs)
+		self.assertTrue('lists differ at index 1:' in failmsgs)
+		self.assertTrue('\t2 != 4' in failmsgs)
+
+	def test_assert_equal_should_be_friendly_for_array_lengths(self):
+		def arrayNE(s):
+			s.assertEqual([1,2,3], [1])
+			
+		result = self.run_method(arrayNE)
+		self.assertFalse(result.wasSuccessful())
+		failmsgs = result.failures[0][1].split('\n')
+		
+		print "failmsgs = %s" % (failmsgs,)
+		
+		self.assertTrue('AssertionError: [1, 2, 3] != [1]' in failmsgs)
+		self.assertTrue('lists differ at index 1:' in failmsgs)
+		self.assertTrue('\t2 != (no more values)' in failmsgs)
+			
+	def test_assert_equal_should_work(self):
+		def arrayEQ(s):
+			s.assertEqual([1,2,3], [1,2,3])
+			
+		self.assertTrue(self.run_method(arrayEQ).wasSuccessful())
+			
+	def test_assert_equal_should_be_friendly_for_dict_key_diffs(self):
+		def dictNE(s):
+			s.assertEqual({'a': 'b'}, {'4': 'x', '5': 'd'})
+
+		result = self.run_method(dictNE)
+		self.assertFalse(result.wasSuccessful())
+		failmsgs = result.failures[0][1].split('\n')
+		
+		print "failmsgs = %s" % (failmsgs,)
+		
+		self.assertTrue("AssertionError: %r != %r" % ({'a': 'b'}, {'4': 'x', '5': 'd'}) in failmsgs)
+		self.assertTrue("dict keys differ: ['a'] != ['4', '5']" in failmsgs)
+
+	def test_assert_equal_should_be_friendly_for_dict_value_diffs(self):
+		def dictNE(s):
+			s.assertEqual({'a': 'b', '4': 'x'}, {'4': 'x', 'a': 'd'})
+
+		result = self.run_method(dictNE)
+		self.assertFalse(result.wasSuccessful())
+		failmsgs = result.failures[0][1].split('\n')
+		
+		print "failmsgs = %s" % (failmsgs,)
+		
+		self.assertTrue("AssertionError: %r != %r" % ({'a': 'b', '4': 'x'}, {'4': 'x', 'a': 'd'}) in failmsgs)
+		self.assertTrue("difference between dicts: {'a': 'b'} vs {'a': 'd'}" in failmsgs)
+
+	def test_assert_equal_should_use_super_if_desc_is_defined(self):
+		def dictNE(s):
+			s.assertEqual({'a': 'b', '4': 'x'}, {'4': 'x', 'a': 'd'}, 'foo went bad!')
+
+		result = self.run_method(dictNE)
+		self.assertFalse(result.wasSuccessful())
+		failmsgs = result.failures[0][1].split('\n')
+		
+		print "failmsgs = %s" % (failmsgs,)
+		self.assertTrue("AssertionError: foo went bad!" in failmsgs)
+		
+	def test_assert_equal_should_work(self):
+		def dictEQ(s):
+			s.assertEqual({'a':'1'}, {'a':'1'})
+		self.assertTrue(self.run_method(dictEQ).wasSuccessful())
+
+
+
 	def test_assert_raises_matches(self):
 		def test_raise_match(s):
 			s.assertRaises(RuntimeError, lambda: self.make_error(1,2), message="args are (1, 2)")
