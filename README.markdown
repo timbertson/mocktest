@@ -160,10 +160,9 @@ resulting in:
 	called with: ['a','b','c']
 	'result...'
 
-*note*: If you use both action and return_value, action will be called but
-return_value will be returned instead of anything action returns. If you only
-have action, the return value will come from that (even if it doesn't return
-anything; the return value will be None)
+*note*: You cannot use both action and return_value on the same mock, you'll get
+a `MockError`. If you want to have an action and particular return value, return the
+value from the action.
 
 Because setting properties like this is a little verbose, mock wrapper objects
 provide some helpful methods. These methods all return the mock wrapper itself,
@@ -180,8 +179,8 @@ relate to attributes:
 	mock_wrapper().raising(IOError('permission denied'))
 
 `raising` takes an exception class or instance and raises it when the mock is
-called. This overwrites the mock's action attribute, and makes return_value
-irrelevant.
+called. This overwrites the mock's action attribute (and will fail if you have
+already set an action).
 
 
 By default, calling `raw_mock.some_attribute` will force `some_attribute` to be
@@ -353,6 +352,48 @@ It doesn't have to be an inline lambda expression:
 		return True
 		
 	mock_anchor.method.is_expected.where_args(check_args)
+
+#### Proxying
+
+Proxying options are confusingly similar to argument constraints. But where argument
+constraints validate the arguments that the mock is called with, proxying controls
+weather the mock intercepts a method call in the first place. An example:
+
+	class MyObject(object):
+		def do_something(self, some_number):
+			return some_number + 10
+	obj = MyObject()
+	
+	# (note the use of `obj` to match the implicit `self` paramater)
+	wrapper = mock_on(obj).do_something.with_args(obj, 5).returning(500)
+	mock_do_something = wrapper.mock
+	
+	# now if the arguments we give to the mock don't match what we supplied to
+	# with_args, the call will go ahead just as if we hadn't set a mock on obj:
+	
+	assert mock_do_something(1) == 11
+	assert mock_do_something(2) == 12
+	
+	# but if the arguments do match:
+	assert mock_do_something(5) == 500
+	
+	# note that only the intercepted call is recorded
+	assert wrapper.called.once()
+
+Just like argument constraints, you can also use `where_args` - e.g:
+
+	def second_arg_is_a_string(a, b):
+		return isinstance(b, str)
+	
+	wrapper = mock_on(obj).do_something.where_args(second_arg_is_a_string).returning("STRING")
+	mock_do_something = wrapper.mock
+	
+	assert mock_do_something(1) == 11
+	assert mock_do_something(2) == 12
+	
+	# but if the arguments do match:
+	assert mock_do_something('5') == "STRING"
+
 
 #### Post-checking
 Specifying your expectations before anything happens is sometimes not the best
