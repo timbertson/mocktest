@@ -62,11 +62,12 @@ class MockAnchor(RealSetter):
 			raise TypeError("Replacing a mock with another mock is a profoundly bad idea.\n" +
 			                "Try re-using mock \"%s\" instead" % (name,))
 		self._real_child_store(in_dict)[name] = real_child
+		return real_child
 	
 	def _make_mock_if_required(self, name, in_dict=False):
 		if name not in self._children:
-			self._backup_child(name, in_dict)
-			new_child = MockWrapper(raw_mock(name=name))
+			real_child = self._backup_child(name, in_dict)
+			new_child = MockWrapper(raw_mock(name=name), proxied=real_child)
 			self._child_store(in_dict)[name] = new_child
 			# insert its SilentMock into the parent
 			self._insertion_func(in_dict)(self._parent, name, new_child._mock)

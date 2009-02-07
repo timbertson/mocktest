@@ -122,4 +122,20 @@ class MockAnchorTest(TestCase):
 		stderr = mock_on(sys).stderr
 		mock_on(real_object, quiet=True).c
 		self.assertFalse(stderr.child('write').called)
+
+	def test_should_set_proxy_for_an_existing_attribute(self):
+		class Foo(object):
+			def callme(self, arg):
+				self.actually_called = True
+		f = Foo()
+		f.actually_called = False
 		
+		wrapper = mock_on(f).callme.with_('a')
+		
+		wrapper.mock('a')
+		self.assertTrue(wrapper.called.once())
+		self.assertFalse(f.actually_called)
+	
+		wrapper.mock('b')
+		self.assertTrue(wrapper.called.once())
+		self.assertTrue(f.actually_called)

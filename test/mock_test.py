@@ -86,7 +86,6 @@ class MockObjectAndWrapperTest(TestCase):
 		def a(self):
 			return "foo"
 		
-		
 	def test_spec_class_in_constructor(self):
 		wrapper = mock_wrapper().with_spec(self.SpecClass)
 		self.assertEqual(wrapper._children.keys(), ['a','b'])
@@ -237,6 +236,51 @@ class MockObjectAndWrapperTest(TestCase):
 				('first_call',),
 				(('second_call','arg2'), {'call_':2}),
 			])
+
+class ProxyingTest(TestCase):
+	def setUp(self):
+		
+		self.actually_called = False
+		def called(whoami, *args, **kwargs):
+			print "ACTUALLY CALLED"
+			whoami.actually_called = True
+			return 'real_return'
+		
+		self.wrapper = mock_wrapper(called).returning('mock_return')
+	
+	def test_should_not_let_you_set__should_intercept__twice(self):
+		self.wrapper.with_args(self, 'x',y=1)
+		self.assertRaises(MockError, lambda: self.wrapper.with_args(self))
+		self.assertRaises(MockError, lambda: self.wrapper.when_args(self))
+		
+	def test_should_act_as_mock_only_when_args_match(self):
+		self.wrapper.with_args(self, 'x',y=1)
+
+		self.assertEqual(self.wrapper.mock(self, 'x',y=1), 'mock_return')
+		self.assertTrue(self.wrapper.called.once())
+		self.assertFalse(self.actually_called)
+
+		# now this one should be ignored by the mock
+		self.assertEqual(self.wrapper.mock(self, 'y', y=1), 'real_return')
+		self.assertTrue(self.wrapper.called.once())
+		self.assertTrue(self.actually_called)
+		
+	def test_should_act_as_mock_only_when_should_intercept_returns_true(self):
+		def are_single(arg):
+			# accept exactly one argument
+			return True
+		
+		self.wrapper.when_args(are_single)
+		
+		self.assertEqual(self.wrapper.mock(self), 'mock_return')
+		self.assertTrue(self.wrapper.called.once())
+		self.assertFalse(self.actually_called)
+
+		# now this one should be ignored by the mock
+		self.assertEqual(self.wrapper.mock(self, 'y'), 'real_return')
+		self.assertTrue(self.wrapper.called.once())
+		self.assertTrue(self.actually_called)
+	
 
 # -- options that clobber each other:
 class ClobberTest(TestCase):

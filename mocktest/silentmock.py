@@ -31,6 +31,8 @@ class SilentMock(RealSetter):
 					'_children':{},
 					'_modifiable_children':True,
 					'_return_value_provided':False,
+					'should_intercept':True,
+					'_proxied': None,
 				})
 		self._mock_reset()
 		self._mock_set(**kwargs)
@@ -109,7 +111,21 @@ class SilentMock(RealSetter):
 	def _mock_del_action_hook(self):
 		self._mock_dict['action'] = None
 		
+	def _mock_should_intercept(self, *args, **kwargs):
+		should_intercept = self._mock_get('should_intercept')
+		if isinstance(should_intercept, bool):
+			return should_intercept
+		try:
+			return should_intercept(*args, **kwargs)
+		except TypeError:
+			return False
+	
 	def __call__(self, *args, **kwargs):
+		if not self._mock_should_intercept(*args, **kwargs):
+			# call the real (proxied) object
+			#TODO: catch StandardError, and trim a few lines off the stacktrace
+			#      so end users don't have to care about the internals of SilentMock
+			return self._mock_get('_proxied')(*args, **kwargs)
 		self._mock_get('call_list').append(CallRecord(args, kwargs))
 		retval_done = False
 		if self._mock_get('action') is not None:
