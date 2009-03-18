@@ -156,8 +156,17 @@ class SilentMock(RealSetter):
 			self._mock_get('_children')[attr] = val
 
 	def __getattribute__(self, name):
-		if name.startswith('_'):
+		if name.startswith('__') and name.endswith('__'):
+			# Attempt to get special methods directly, without exception
+			# handling
 			return object.__getattribute__(self, name)
+		elif name.startswith('_'):
+			try:
+				# Attempt to get the attribute, if that fails
+				# treat it as a child
+				return object.__getattribute__(self, name)
+			except AttributeError:
+				pass
 			
 		def _new():
 			self._mock_get('_children')[name] = raw_mock(name=name)

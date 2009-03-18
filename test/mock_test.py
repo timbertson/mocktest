@@ -55,14 +55,16 @@ class MockObjectAndWrapperTest(TestCase):
 		self.assertRaises(AttributeError, lambda: set_thingie())
 		
 	def test_with_methods_should_set_return_values_and_freeze_mock(self):
-		wrapper = mock_wrapper().with_methods('blob', foo='bar', x=123)
+		wrapper = mock_wrapper().with_methods('blob', '_blob', foo='bar', x=123, _blobx='underscore!')
 		mock = wrapper.mock
 		
 		self.is_a_mock(mock.blob())
+		self.is_a_mock(mock._blob())
 		self.assertEqual(mock.foo(), 'bar')
 		self.assertEqual(mock.x(), 123)
+		self.assertEqual(mock._blobx(), 'underscore!')
 		
-		self.assertEqual(sorted(wrapper._children.keys()), ['blob', 'foo','x'])
+		self.assertEqual(sorted(wrapper._children.keys()), ['_blob', '_blobx', 'blob', 'foo','x'])
 		self.assert_mock_is_frozen(wrapper)
 	
 	def test_with_children_should_set_return_values_and_freeze_mock(self):
