@@ -34,8 +34,8 @@ except ImportError:
 def _compose(hook, func):
 	if hook is None:
 		return func
-	if hook is None:
-		return func
+	if func is None:
+		return hook
 	def run_hook():
 		hook()
 		func()
