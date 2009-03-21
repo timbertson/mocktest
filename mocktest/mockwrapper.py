@@ -8,6 +8,7 @@ mock_wrapper(silent_mock).
 A MockWrapper / SilentMock pair can be created with mock_wrapper()
 (the silent mock object is accessible via mock_wrapper()_)
 """
+__unittest = True
 
 from lib.realsetter import RealSetter
 from silentmock import SilentMock, raw_mock

@@ -9,6 +9,7 @@ from callrecord import CallRecord
 from mockerror import MockError
 
 DEFAULT = object()
+__unittest = True
 
 def raw_mock(name = None, **kwargs):
 	"""a silent mock object. use mock_of(silent_mock) to set expectations, etc"""

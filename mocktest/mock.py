@@ -11,6 +11,8 @@ from silentmock import SilentMock, raw_mock
 from mockwrapper import MockWrapper, mock_wrapper
 from mockanchor import MockAnchor, mock_on
 
+__unittest = True
+
 def _setup():
 	MockWrapper._setup()
 

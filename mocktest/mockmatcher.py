@@ -1,4 +1,5 @@
 from callrecord import CallRecord
+__unittest = True
 
 class MockMatcher(object):
 	_multiplicity = None

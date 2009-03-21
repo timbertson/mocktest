@@ -19,7 +19,10 @@ __all__ = (
 import unittest
 import re
 import sys
+import os
 import mock
+
+__unittest = True
 
 def _compose(hook, func):
 	if hook is None:
@@ -272,4 +275,4 @@ class TestCase(unittest.TestCase):
 			if ok: result.addSuccess(self)
 		finally:
 			result.stopTest(self)
-
+	

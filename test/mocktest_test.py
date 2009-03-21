@@ -1,6 +1,7 @@
 import unittest
 import re
 import sys
+import os
 
 import helper
 import mocktest
@@ -354,6 +355,39 @@ class TestAutoSpecVerification(unittest.TestCase):
 		
 		for got, expected in zip(line_agnostic_repr, expected_lines):
 			self.assertEqual(got, expected)
+	
+	def test_removing_of_mocktest_lines_from_exception_traces(self):
+		# unittest has built-in functionality to ignore lines that correspond
+		# to internal unittest code. Mocktest hooks into this, by defining
+		# a __unittest variable in the global scope of all mocktest files that
+		# raise AssertionErrors. This causes unittest to think that mocktest is
+		# an internal part of unittest.
+		mocktest_file_names = os.listdir(os.path.join(os.path.dirname(__file__), '..','mocktest'))
+		mocktest_file_names = filter(lambda x: x.endswith('.py'), mocktest_file_names)
+		self.assertTrue(len(mocktest_file_names) > 2) # make sure we have some file names
+		def ensure_no_mocktest_files_appear_in_failure(failure_func):
+			result = self.run_method(failure_func)
+			self.assertEqual(len(result.failures), 1)
+			lines = result.failures[0][1].splitlines()
+			for filename in mocktest_file_names:
+				lines_containing_mocktest_internal_files = [line for line in lines if (filename + '"') in line]
+				self.assertEqual([], lines_containing_mocktest_internal_files)
+			
+		ensure_no_mocktest_files_appear_in_failure(lambda slf: slf.assertEqual(False, True))
+		ensure_no_mocktest_files_appear_in_failure(lambda slf: slf.assertTrue(False))
+		ensure_no_mocktest_files_appear_in_failure(lambda slf: slf.assertFalse(True))
+		ensure_no_mocktest_files_appear_in_failure(lambda slf: slf.assertRaises(TypeError, self.make_error))
+		
+		def failing_mock_expectation(slf):
+			mocktest.mock_wrapper().is_expected
+			# emulate a refresh
+			try:
+				mocktest._teardown()
+			finally:
+				mocktest._setup()
+		ensure_no_mocktest_files_appear_in_failure(failing_mock_expectation)
+
+		
 
 class MockTestTest(mocktest.TestCase):
 	def test_should_do_expectations(self):
