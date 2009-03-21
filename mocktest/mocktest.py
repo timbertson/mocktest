@@ -227,4 +227,49 @@ class TestCase(unittest.TestCase):
 		else:
 			self.fail("%s did not raise %s" % (callsig, exception))
 	failUnlessRaises = assertRaises
+	
+	def run(self, result=None):
+		"""
+		this is (mostly) the default implementation of unittest.run
+		the only modification is that a `self.FailureException` raised
+		in the teardown method counts for a failure
+		"""
+		if result is None: result = self.defaultTestResult()
+		result.startTest(self)
+		testMethod = getattr(self, self._testMethodName)
+		try:
+			try:
+				self.setUp()
+			except KeyboardInterrupt:
+				raise
+			except:
+				result.addError(self, self._exc_info())
+				return
+
+			ok = False
+			try:
+				testMethod()
+				ok = True
+			except self.failureException:
+				result.addFailure(self, self._exc_info())
+			except KeyboardInterrupt:
+				raise
+			except:
+				result.addError(self, self._exc_info())
+
+			try:
+				self.tearDown()
+			except self.failureException:
+				# ignore this failure if the test already failed
+				if ok:
+					result.addFailure(self, self._exc_info())
+					ok = False
+			except KeyboardInterrupt:
+				raise
+			except:
+				result.addError(self, self._exc_info())
+				ok = False
+			if ok: result.addSuccess(self)
+		finally:
+			result.stopTest(self)
 

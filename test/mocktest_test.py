@@ -99,20 +99,6 @@ class TestAutoSpecVerification(unittest.TestCase):
 		self.assert_(self.run_method(test_failure).wasSuccessful())
 		assert_desc(self.output.called.with_('[[[ IGNORED ]]] (not done yet) ... '))
 	
-	def test_expectation_failures_do_not_cause_further_failures(self):
-		class myTest(mocktest.TestCase):
-			def test_a(self):
-				foo = mocktest.mock_wrapper()
-				foo.expects('blah').once()
-			def test_b(self):
-				pass
-			def test_c(self):
-				pass
-		results = self.run_suite(myTest)
-		self.assertEqual(3, results.testsRun)
-		self.assertEqual(0, len(results.failures)) #TBD: 1
-		self.assertEqual(1, len(results.errors)) # TBD: 0
-	
 	def test_pending(self):
 		callback = raw_mock()
 			
@@ -155,7 +141,16 @@ class TestAutoSpecVerification(unittest.TestCase):
 		self.assertEqual(e.__class__, RuntimeError)
 		self.assertEqual(e.message, "MockWrapper._setup has not been called. Make sure you are inheriting from mocktest.TestCase, not unittest.TestCase")
 		mocktest._setup()
-
+		
+	def test_expectation_errors_should_be_failures(self):
+		class myTest(mocktest.TestCase):
+			def test_a(self):
+				foo = mocktest.mock_wrapper()
+				foo.expects('blah').once()
+		results = self.run_suite(myTest)
+		self.assertEqual(1, results.testsRun)
+		self.assertEqual(1, len(results.failures))
+		self.assertEqual(0, len(results.errors))
 
 	def make_error(self, *args, **kwargs):
 		print "runtime error is being raised..."
@@ -396,8 +391,8 @@ class TestFailuresDontAffectSuccessiveTests(unittest.TestCase):
 		suite = unittest.makeSuite(InnerTest)
 		result = unittest.TestResult()
 		suite.run(result)
-		self.assertEqual(len(result.errors), 1)
-		self.assertEqual(len(result.failures), 0)
+		self.assertEqual(len(result.errors), 0)
+		self.assertEqual(len(result.failures), 1)
 		self.assertEqual(result.testsRun, 2)
 
 
