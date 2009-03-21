@@ -81,7 +81,6 @@ class TestCase(unittest.TestCase):
 	pending = globals()['pending']
 	pending = globals()['ignore']
 	def __init__(self, methodName = 'runTest'):
-		# unittest.TestCase.__init__(self, methodName)
 		super(TestCase, self).__init__(methodName)
 		try:
 			subclass_setup = self.setUp
