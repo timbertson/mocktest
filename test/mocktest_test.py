@@ -110,9 +110,9 @@ class TestAutoSpecVerification(unittest.TestCase):
 				pass
 		results = self.run_suite(myTest)
 		self.assertEqual(3, results.testsRun)
-		self.assertEqual(0, len(results.failures))
-		self.assertEqual(1, len(results.errors))
-		
+		self.assertEqual(0, len(results.failures)) #TBD: 1
+		self.assertEqual(1, len(results.errors)) # TBD: 0
+	
 	def test_pending(self):
 		callback = raw_mock()
 			
@@ -370,6 +370,36 @@ class MockTestTest(mocktest.TestCase):
 		
 		# pretend we're in a new test (wipe the expected calls register)
 		mocktest.mock.MockWrapper._all_expectations = []
+
+class Mystr(object):
+	def __init__(self, s):
+		self.s = s
 	
+	def split(self, string):
+		return self.s.split(string)
+	
+	def __str__(self):
+		return "STRING:%s" % self.s
+foo = Mystr("blah")
+class TestFailuresDontAffectSuccessiveTests(unittest.TestCase):
+	def test_failures_dont_affect_successive_tests(self):
+		class InnerTest(mocktest.TestCase):
+			def test_one(self):
+				mocktest.mock_on(foo).split.is_expected.with_('a')
+				foo.split('x')
+	
+			def test_two(self):
+				print foo
+				print foo.split('a')
+				self.assertEqual(foo.split('a'), ['bl','h'])
+
+		suite = unittest.makeSuite(InnerTest)
+		result = unittest.TestResult()
+		suite.run(result)
+		self.assertEqual(len(result.errors), 1)
+		self.assertEqual(len(result.failures), 0)
+		self.assertEqual(result.testsRun, 2)
+
+
 if __name__ == '__main__':
 	unittest.main()

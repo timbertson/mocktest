@@ -15,8 +15,10 @@ def _setup():
 	MockWrapper._setup()
 
 def _teardown():
-	MockWrapper._teardown()
-	MockAnchor._reset_all()
+	try:
+		MockWrapper._teardown()
+	finally:
+		MockAnchor._reset_all()
 
 def expect(wrapper_or_mock):
 	if isinstance(wrapper_or_mock, SilentMock):
