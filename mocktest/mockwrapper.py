@@ -33,13 +33,13 @@ class MockWrapper(RealSetter):
 	a mock object wrapper for use in test cases
 	 - allows expectations and mock actions to be set
 	
-	all setattr and getattr go via the attahced silent mock's _mock_get and _mock_set
+	all setattr and getattr calls go via the attached silent mock's _mock_get and _mock_set
 	"""
 	_all_expectations = None
 	def __init__(self, wrapped_mock = None, proxied = None):
 		if self.__class__._all_expectations is None:
 			raise RuntimeError(("%s._setup has not been called. " +
-				"Make sure you are inheriting from mock.TestCase, " +
+				"Make sure you are inheriting from mocktest.TestCase, " +
 				"not unittest.TestCase") % (self.__class__.__name__,))
 		if wrapped_mock is None:
 			wrapped_mock = raw_mock()
@@ -63,14 +63,14 @@ class MockWrapper(RealSetter):
 	@classmethod
 	def _setup(cls):
 		if not cls._all_expectations is None:
-			raise RuntimeError("%s._setup been called twice in a row"
+			raise RuntimeError("%s._setup has been called twice in a row"
 				% (cls.__name__,))
 		cls._all_expectations = []
 	
 	@classmethod
 	def _teardown(cls):
 		if cls._all_expectations is None:
-			raise RuntimeError("%s._teardown been called twice in a row"
+			raise RuntimeError("%s._teardown has been called twice in a row"
 				% (cls.__name__,))
 		try:
 			for expectation in cls._all_expectations:

@@ -153,7 +153,7 @@ class TestAutoSpecVerification(unittest.TestCase):
 
 		self.assertFalse(e is None, "no exception was raised")
 		self.assertEqual(e.__class__, RuntimeError)
-		self.assertEqual(e.message, "MockWrapper._setup has not been called. Make sure you are inheriting from mock.TestCase, not unittest.TestCase")
+		self.assertEqual(e.message, "MockWrapper._setup has not been called. Make sure you are inheriting from mocktest.TestCase, not unittest.TestCase")
 		mocktest._setup()
 
 
