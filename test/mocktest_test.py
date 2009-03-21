@@ -10,8 +10,12 @@ def assert_desc(expr):
 	assert expr, expr
 
 class SomeError(RuntimeError):
+	def __init__(self, *args, **kwargs):
+		self.args = args
+		self.kwargs = kwargs
+
 	def __str__(self):
-		return "args are %r" % (self.args,)
+		return "args are %r, kwargs are %r" % (self.args, self.kwargs)
 	
 
 class TestAutoSpecVerification(unittest.TestCase):
@@ -251,11 +255,12 @@ class TestAutoSpecVerification(unittest.TestCase):
 
 	def test_assert_raises_matches(self):
 		def test_raise_match(s):
-			s.assertRaises(RuntimeError, lambda: self.make_error(1,2), message="args are (1, 2)")
+			s.assertRaises(RuntimeError, lambda: self.make_error(1,2), message="args are (1, 2), kwargs are {}")
 			s.assertRaises(Exception, self.make_error, matching="^a")
-			s.assertRaises(Exception, self.make_error, matching="\\)$")
+			s.assertRaises(Exception, self.make_error, matching="\\{\\}$")
 			s.assertRaises(RuntimeError, lambda: self.make_error('foo'), args=('foo',))
 			s.assertRaises(RuntimeError, lambda: self.make_error(), args=())
+			s.assertRaises(RuntimeError, lambda: self.make_error(x=1), kwargs=dict(x=1))
 		
 		result = self.run_method(test_raise_match)
 		self.assertTrue(result.wasSuccessful())
@@ -283,7 +288,19 @@ class TestAutoSpecVerification(unittest.TestCase):
 			s.assertRaises(TypeError, self.make_error)
 		result = self.run_method(test_raise_mismatch_type)
 		self.assertFalse(result.wasSuccessful())
-
+		
+	def test_assert_raises_verifies_args(self):
+		def test_raise_mismatch_args(s):
+			s.assertRaises(RuntimeError, lambda: self.make_error(1,2,3), args=())
+		result = self.run_method(test_raise_mismatch_args)
+		self.assertFalse(result.wasSuccessful())
+	
+	def test_assert_raises_verifies_kwargs(self):
+		def test_raise_mismatch_kwargs(s):
+			s.assertRaises(RuntimeError, lambda: self.make_error(x=1), kwargs=dict(x=2))
+		result = self.run_method(test_raise_mismatch_kwargs)
+		self.assertFalse(result.wasSuccessful())
+	
 	def test_assert_raises_verifies_message(self):
 		def test_raise_mismatch_message(s):
 			s.assertRaises(RuntimeError, self.make_error, message='nope')

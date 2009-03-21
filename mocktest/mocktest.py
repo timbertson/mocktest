@@ -186,10 +186,11 @@ class TestCase(unittest.TestCase):
 				in_a_not_b[k] = v
 		return in_a_not_b
 	
-	def assertRaises(self, exception, func, message = None, args = None, matching=None):
+	def assertRaises(self, exception, func, message = None, args = None, kwargs = None, matching=None):
 		"""
 		Enhanced assertRaises, able to:
 		 - check arguments (args)
+		 - check keyword arguments (kwargs)
 		 - match a regular expression on the resulting expression message (matching)
 		 - compare message strings (message)
 		"""
@@ -203,6 +204,11 @@ class TestCase(unittest.TestCase):
 					"%s raised %s with unexpected args: "\
 					"expected=%r, actual=%r"\
 					% (callsig, exc.__class__, args, exc.args))
+			if kwargs is not None:
+				self.failIf(exc.kwargs != kwargs,
+					"%s raised %s with unexpected keyword args: "\
+					"expected=%r, actual=%r"\
+					% (callsig, exc.__class__, kwargs, exc.kwargs))
 			if matching is not None:
 				pattern = re.compile(matching)
 				self.failUnless(pattern.search(str(exc)),
