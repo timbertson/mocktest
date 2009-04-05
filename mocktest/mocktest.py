@@ -24,6 +24,13 @@ import mock
 
 __unittest = True
 
+# set the SkipTest exception class
+try:
+	from unittest import SkipTest
+except ImportError:
+	SkipTest = None
+	
+
 def _compose(hook, func):
 	if hook is None:
 		return func
@@ -66,6 +73,8 @@ def pending(function, reason = None):
 		except StandardError:
 			print >> sys.stderr, "[[[ PENDING ]]]%s ... " % (reason_str,)
 			print "[[[ PENDING ]]]%s ... " % (reason_str,)
+			if SkipTest is not None:
+				raise SkipTest(reason_str)
 		if success:
 			raise AssertionError, "%s%s PASSED unexpectedly " % (fn_name, reason_str)
 	actually_call_it.__name__ = function.__name__

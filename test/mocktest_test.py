@@ -129,6 +129,17 @@ class TestAutoSpecVerification(unittest.TestCase):
 		
 		self.assertEqual(mock_wrapper(callback).called.exactly(2).times.get_calls(), [('a',), ('c',)])
 	
+	def test_pending_should_raise_skipTest(self):
+		@pending
+		def test_failed_pending(self):
+			assert False
+		
+		try:
+			from unittest import SkipTest
+			self.assertRaises(SkipTest, test_failed_pending)
+		except ImportError:
+			print "cant find SkipTest, so this test case won't work"
+	
 	def test_invalid_usage_after_teardown(self):
 		mocktest._teardown()
 		
