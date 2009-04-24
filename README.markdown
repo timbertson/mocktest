@@ -229,7 +229,8 @@ added. If you want to control this yourself, use `wrapper.frozen()` and
 
 If you want to get advanced, you can also override special methods on a mock:
 
-	>>> wrapper = mock_wrapper().with_special( __len__ = lambda x: 5 )
+  #TODO: this doesn't currently work
+	>>> wrapper = mock_wrapper().with_children( __len__ = lambda x: 5 )
 	>>> len(wrapper.mock)
 	5
 

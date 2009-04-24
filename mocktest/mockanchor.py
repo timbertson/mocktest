@@ -146,6 +146,7 @@ class MockAnchor(RealSetter):
 	def __getattr__(self, attr):
 		return self._make_mock_if_required(attr)
 		
+	#TODO: handle __*****__ method names specially
 	def __setattr__(self, attr, val):
 		child = self._make_mock_if_required(attr)
 		child.return_value = val

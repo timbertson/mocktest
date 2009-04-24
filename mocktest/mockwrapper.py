@@ -115,12 +115,9 @@ class MockWrapper(RealSetter):
 		self.mock._mock_reset()
 	
 	def child(self, val):
-		return mock_wrapper(getattr(self.mock, val))
+		return mock_wrapper(self.mock._mock_get_child(val))
+	method = child
 	
-	def with_special(self, **kwargs):
-		self.mock._mock_set_special(**kwargs)
-		return self
-		
 	# convenience methods for dsl-like chaining
 	def returning(self, val):
 		self.return_value = val

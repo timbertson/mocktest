@@ -5,6 +5,7 @@ inspected passing the silent mock into a MockWrapper object.
 """
 
 from lib.realsetter import RealSetter
+from lib.singletonclass import SingletonClass
 from callrecord import CallRecord
 from mockerror import MockError
 
@@ -19,12 +20,8 @@ def raw_mock(name = None, **kwargs):
 		kwargs['name'] = name
 	return SilentMock(**kwargs)
 
-class SilentMock(RealSetter):
+class SilentMock(RealSetter, SingletonClass):
 	def __init__(self, **kwargs):
-		# make self the only instance of a brand new class,
-		# allowing for special method assignment
-		self.__class__ = type(self.__class__.__name__, (self.__class__,), {})
-
 		self._real_set(_mock_dict = {
 					'action': None,
 					'return_value':DEFAULT,
@@ -69,26 +66,6 @@ class SilentMock(RealSetter):
 				attr.replace('_',' '),
 				self._mock_get('name'),
 				"a return value" if result_set == 'return_value' else 'an action'))
-
-	def _mock_set_special(self, **kwargs):
-		"""set special methods"""
-		for k,v in kwargs.items():
-			print "k = %s" % k
-			if not (k.startswith('__') and k.endswith('__')):
-				raise ValueError("%s is not a magic method" % (k,))
-			
-			allowable = True
-			try:
-				allowable = getattr(self.__class__, k) == getattr(object, k)
-			except AttributeError:
-				pass
-			if not allowable:
-				# we overrode object's method - for a good reason
-				raise AttributeError("cannot override %s special method '%s'" % (self.__class__.__name__, k))
-
-			# we need to override the whole class' method
-			# in order for special methods to be used
-			setattr(self.__class__, k, v)
 
 	def _mock_get(self, attr, **kwargs):
 		if 'default' in kwargs:
@@ -149,26 +126,19 @@ class SilentMock(RealSetter):
 			if not self._mock_get('_modifiable_children'):
 				raise AttributeError, "object (%s) has no attribute '%s'" % (self, name,)
 
-	def __setattr__(self, attr, val):
-		if attr.startswith('__') and attr.endswith('__'):
-			return object.__setattr__(self, attr, val)
-		else:
-			self._mock_fail_if_no_child_allowed(attr)
-			self._mock_get('_children')[attr] = val
+	def _mock_special_method(self, name):
+		special_method = name.startswith('__') and name.endswith('__')
+		if special_method:
+			self._ensure_singleton_class()
+		return special_method
 
-	def __getattribute__(self, name):
-		if name.startswith('__') and name.endswith('__'):
-			# Attempt to get special methods directly, without exception
-			# handling
-			return object.__getattribute__(self, name)
-		elif name.startswith('_'):
-			try:
-				# Attempt to get the attribute, if that fails
-				# treat it as a child
-				return object.__getattribute__(self, name)
-			except AttributeError:
-				pass
-			
+	def __setattr__(self, attr, val):
+		self._mock_fail_if_no_child_allowed(attr)
+		if self._mock_special_method(attr):
+			return object.__setattr__(type(self), attr, val)
+		self._mock_get('_children')[attr] = val
+
+	def _mock_get_child(self, name):
 		def _new():
 			self._mock_get('_children')[name] = raw_mock(name=name)
 			return self._mock_get('_children')[name]
@@ -181,7 +151,24 @@ class SilentMock(RealSetter):
 			child = self._mock_get('_children')[name]
 			if child is DEFAULT:
 				child = _new()
+		if self._mock_special_method(name):
+			setattr(type(self), name, child)
 		return child
+	
+	def __getattribute__(self, name):
+		if name.startswith('__') and name.endswith('__'):
+			# Attempt to get special methods directly, without exception
+			# handling
+			return object.__getattribute__(self, name)
+		elif name.startswith('_'):
+			try:
+				# Attempt to get the attribute, if that fails
+				# treat it as a child
+				return object.__getattribute__(self, name)
+			except AttributeError:
+				pass
+		return self._mock_get_child(name)
+			
 
 	def __str__(self):
 		return str(self._mock_get('name'))

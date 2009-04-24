@@ -169,28 +169,22 @@ class MockObjectAndWrapperTest(TestCase):
 	
 	def test_should_allow_setting_of_magic_methods(self):
 		clean_wrapper = mock_wrapper().named('clean')
-		modified_wrapper = mock_wrapper().named('modified').with_special(
-			__repr__ = mock_wrapper().returning('my repr!').mock,
-			__len__ = lambda x: 5)
+		modified_wrapper = mock_wrapper().named('modified')
+		
+		modified_wrapper.method('__repr__').returning('my repr!')
+		modified_wrapper.method('__str__').returning('my str!')
+		modified_wrapper.method('__len__').returning(5)
 			
-		self.assertNotEqual(clean_wrapper.mock.__class__, modified_wrapper.mock.__class__)
+		self.assertNotEqual(type(clean_wrapper.mock), type(modified_wrapper.mock))
+		self.assertEqual(type(clean_wrapper.mock).__name__, type(modified_wrapper.mock).__name__)
 		
 		val = repr(modified_wrapper.mock)
-		self.assertTrue(modified_wrapper.child('__repr__').called.once())
 		self.assertEqual(val, 'my repr!')
+		self.assertTrue(modified_wrapper.child('__repr__').called.once())
 	
-		# can't override builtin mock magic methods
-		self.assertRaises(
-			AttributeError, lambda: modified_wrapper.with_special(__str__ = lambda x: 'foop'),
-			message="cannot override SilentMock special method '__str__'")
-	
-		# can't assign non-magic ones
-		self.assertRaises(ValueError, lambda: modified_wrapper.with_special(_len = lambda x: 5))
-		
-		self.assertEqual(len(modified_wrapper.mock), 5)
-		self.assertRaises(AttributeError, lambda: clean_wrapper.mock.__len__)
-		self.assertRaises(TypeError, lambda: len(clean_wrapper.mock))
-		self.assertEqual(str(clean_wrapper.mock), 'clean')
+		str_val = str(modified_wrapper.mock)
+		self.assertEqual(str_val, 'my str!')
+		self.assertTrue(modified_wrapper.child('__str__').called.once())
 	
 	def test_should_show_where_calls_were_made(self):
 		wrapper = mock_wrapper()
