@@ -1,6 +1,12 @@
 from callrecord import CallRecord
 __unittest = True
 
+def _proxy_and_return_self(function):
+	def call_delegate(self, *a, **k):
+		getattr(self._mock_wrapper, function.__name__)(*a, **k)
+		return self
+	return call_delegate
+
 class MockMatcher(object):
 	_multiplicity = None
 	_multiplicity_description = None
@@ -12,8 +18,9 @@ class MockMatcher(object):
 		return self._mock._mock_get('call_list')
 	call_list = property(_call_list)
 	
-	def __init__(self, mock_obj):
-		self._mock = mock_obj
+	def __init__(self, mock_wrapper):
+		self._mock = mock_wrapper.mock
+		self._mock_wrapper = mock_wrapper
 	
 	def with_args(self, *args, **kwargs):
 		"""
@@ -220,3 +227,16 @@ class MockMatcher(object):
 				desc += "\n  %s:   %s" % (i, arg_set)
 				i += 1
 		return desc
+	
+	# proxy back and forth between mock wrapper:
+	# once you call is_expected or called on a mock wrapper, you can no
+	# longer specify wrapper behaviour (like returning(), etc)) without this:
+	@_proxy_and_return_self
+	def returning(): pass
+	
+	@_proxy_and_return_self
+	def raising(): pass
+
+	@_proxy_and_return_self
+	def with_action(): pass
+

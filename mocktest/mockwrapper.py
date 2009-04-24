@@ -80,8 +80,12 @@ class MockWrapper(RealSetter):
 			cls._all_expectations = None
 
 	def __called_matcher(self):
-		return MockMatcher(self.mock)
+		return MockMatcher(self)
 	called = property(__called_matcher)
+	
+	def __wrapped_child(self, attr):
+		"return a mock wrapper for an attribute of self"
+		return type(self)(getattr(self.mock, attr))
 	
 	def __expect_call_on(self, obj):
 		matcher = MockMatcher(obj)
@@ -89,11 +93,11 @@ class MockWrapper(RealSetter):
 		return matcher
 	
 	def __expect_call_matcher(self):
-		return self.__expect_call_on(self.mock)
+		return self.__expect_call_on(self)
 	is_expected = property(__expect_call_matcher)
 
 	def expects(self, methodname):
-		return self.__expect_call_on(getattr(self.mock, methodname))
+		return self.__expect_call_on(self.__wrapped_child(methodname))
 
 	def __str__(self):
 		return 'mock wrapper for \"%s\"' %(self._get('name'))

@@ -84,6 +84,8 @@ class TestPySpec(TestCase):
 		mock.foo('b')
 		mock.foo('unused_call')
 		
+		print wrapper.child
+		
 		self.assertTrue(wrapper.child('foo').called.with_args('a').exactly(1))
 		self.assertTrue(wrapper.child('foo').called.with_args('b').exactly(2))
 		
@@ -137,6 +139,34 @@ class TestPySpec(TestCase):
 		mock(2)
 		
 		self.assertEqual(wrapper.called.with_(1).get_calls(), [(1,), (1,)])
+	
+	def test_should_allow_chaining_of_mock_wrapper_returning_method(self):
+		wrapper = mock_wrapper()
+		expectation = wrapper.called.once()
+		same_expectation = expectation.returning(5)
+		
+		self.assertTrue(expectation is same_expectation)
+		self.assertEqual(wrapper.return_value, 5)
+		
+	def test_should_allow_chaining_of_mock_wrapper_raising_method(self):
+		wrapper = mock_wrapper()
+		expectation = wrapper.called.once()
+		class FooError(RuntimeError): pass
+		same_expectation = expectation.raising(FooError)
+		
+		self.assertTrue(expectation is same_expectation)
+		self.assertRaises(FooError, wrapper.mock)
+		
+	def test_should_allow_chaining_of_mock_wrapper_raising_method(self):
+		wrapper = mock_wrapper()
+		expectation = wrapper.called.once()
+		def doSomething():
+			print "something happened!"
+		same_expectation = expectation.with_action(doSomething)
+		
+		self.assertTrue(expectation is same_expectation)
+		self.assertEqual(wrapper.action, doSomething)
+		
 	
 if __name__ == '__main__':
 	unittest.main()
