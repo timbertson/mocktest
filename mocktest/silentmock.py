@@ -101,8 +101,6 @@ class SilentMock(RealSetter, SingletonClass):
 	def __call__(self, *args, **kwargs):
 		if not self._mock_should_intercept(*args, **kwargs):
 			# call the real (proxied) object
-			#TODO: catch StandardError, and trim a few lines off the stacktrace
-			#      so end users don't have to care about the internals of SilentMock
 			return self._mock_get('_proxied')(*args, **kwargs)
 		self._mock_get('call_list').append(CallRecord(args, kwargs))
 		retval_done = False
