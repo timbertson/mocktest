@@ -227,16 +227,14 @@ added. If you want to control this yourself, use `wrapper.frozen()` and
 `wrapper.unfrozen()`
 
 
-If you want to get advanced, you can also override special methods on a mock:
+If you want to, you can also override special methods on a mock:
 
-  #TODO: this doesn't currently work
 	>>> wrapper = mock_wrapper().with_children( __len__ = lambda x: 5 )
 	>>> len(wrapper.mock)
 	5
 
-You can't override `__str__` or `__init__` (but there's little point to those),
-and you also can't override `__getattribute__` or `__setattr__`. Are you that
-much of a masochist?
+There's a bit of black magic to special method overriding, so please send bug
+reports if you find something that doesn't work.
 
 ---
 ### Expectations

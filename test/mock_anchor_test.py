@@ -118,21 +118,23 @@ class MockAnchorTest(TestCase):
 			('\n',)
 		])
 	
-	# @pending
 	def test_should_allow_setting_of_special_instance_methods(self):
 		# note: stubbing __init__ only makes sense for class objects
 		class C(object):
 			def __init__(self):
 				self.x = 1
+			
+		self.assertTrue(hasattr(C(), 'x'))
 				
-		init_mock = mock_on(C).__init__
-		print repr(init_mock)
+		init_mock = mock_on(C).__init__.returning(None)
 		instance = C()
 		
 		self.assertTrue(init_mock.called.once())
 		self.assertFalse(hasattr(instance, 'x'))
+		
+		self.downup()
+		self.assertTrue(hasattr(C(), 'x'))
 
-	# @pending
 	def test_should_allow_setting_of_special_class_methods(self):
 		# note: all __**__ methods get set on the class object (except __init__)
 		class C(object):
@@ -143,7 +145,7 @@ class MockAnchorTest(TestCase):
 				return 'str to be overridden'
 				
 		instance = C()
-		str_mock = mock_on(instance).__str__.retuning('fakestr')
+		str_mock = mock_on(instance).__str__.returning('fakestr')
 		
 		self.assertEqual(str(instance), 'fakestr')
 		self.assertTrue(str_mock.called.once())

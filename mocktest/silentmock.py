@@ -10,7 +10,7 @@ from callrecord import CallRecord
 from mockerror import MockError
 
 DEFAULT = object()
-__unittest = True
+# __unittest = True #NOCHECKIN
 
 def raw_mock(name = None, **kwargs):
 	"""a silent mock object. use mock_of(silent_mock) to set expectations, etc"""
@@ -124,16 +124,15 @@ class SilentMock(RealSetter, SingletonClass):
 			if not self._mock_get('_modifiable_children'):
 				raise AttributeError, "object (%s) has no attribute '%s'" % (self, name,)
 
-	def _mock_special_method(self, name):
+	def _assign_special_method(self, name, val):
 		special_method = name.startswith('__') and name.endswith('__')
 		if special_method:
 			self._ensure_singleton_class()
-		return special_method
+			setattr(type(self), name, val)
 
 	def __setattr__(self, attr, val):
 		self._mock_fail_if_no_child_allowed(attr)
-		if self._mock_special_method(attr):
-			return object.__setattr__(type(self), attr, val)
+		self._assign_special_method(attr, val)
 		self._mock_get('_children')[attr] = val
 
 	def _mock_get_child(self, name):
@@ -149,8 +148,7 @@ class SilentMock(RealSetter, SingletonClass):
 			child = self._mock_get('_children')[name]
 			if child is DEFAULT:
 				child = _new()
-		if self._mock_special_method(name):
-			setattr(type(self), name, child)
+		self._assign_special_method(name, child)
 		return child
 	
 	def __getattribute__(self, name):

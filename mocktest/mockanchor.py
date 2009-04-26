@@ -17,9 +17,13 @@ import sys
 from lib.realsetter import RealSetter
 from mockwrapper import MockWrapper
 from silentmock import SilentMock, raw_mock
+from lib import singletonclass
 
 def mock_on(parent, quiet = False):
 	return MockAnchor(parent, quiet)
+
+def _special_method(name):
+	return name.startswith('__') and name.endswith('__')
 
 class MockAnchor(RealSetter):
 	_active = []
@@ -35,6 +39,7 @@ class MockAnchor(RealSetter):
 		self._real_set(_parent = parent)
 		self._real_set(_quiet = quiet)
 		self.__class__._active.append(self)
+		
 		return self
 		
 	def _init_records(self):
@@ -69,9 +74,24 @@ class MockAnchor(RealSetter):
 			real_child = self._backup_child(name, in_dict)
 			new_child = MockWrapper(raw_mock(name=name), proxied=real_child)
 			self._child_store(in_dict)[name] = new_child
-			# insert its SilentMock into the parent
-			self._insertion_func(in_dict)(self._parent, name, new_child._mock)
+			target = self._get_target_for_method(name, in_dict)
+			self._insertion_func(in_dict)(target, name, new_child._mock)
 		return self._child_store(in_dict)[name]
+	
+	def _should_ever_assign_to_super(self, in_dict):
+		return not (in_dict or isinstance(self._parent, type))
+	
+	def _get_target_for_method(self, name, in_dict):
+		if not self._should_ever_assign_to_super(in_dict):
+			return self._parent
+		
+		if not _special_method(name):
+			return self._parent
+			
+		# otherwise, we'll be assigning to the *class* of self._parent
+		# - so we better make it unique
+		singletonclass.ensure_singleton_class(self._parent)
+		return type(self._parent)
 
 	@classmethod
 	def _reset_all(cls):
@@ -139,12 +159,30 @@ class MockAnchor(RealSetter):
 		
 	def _reset(self):
 		"""reset all children and items, then remove all record of them"""
+		self._restore_parent_class()
 		self._restore_children(in_dict = True)
 		self._restore_children(in_dict = False)
 		self._init_records()
+	
+	def _restore_parent_class(self):
+		singletonclass.revert_singleton_class(self._parent)
 			
-	#TODO: handle __*****__ method names specially
-	def __getattr__(self, attr):
+	def __getattribute__(self, attr):
+		try:
+			ret = super(type(self), self).__getattribute__(attr)
+		except AttributeError: ret = None
+
+		# all special methods are accessed via type.__getattr__ when
+		# used as a result of a python language feature
+		#   (eg len(x) instead of x.__len__()).
+		# So any time the instance receives __getattribute__, it must
+		# be an explicit access (by the programmer), for the purpose of
+		# stubbing it.
+		# __class__ is special. Don't even try.
+		if ret is not None:
+			if (not _special_method(attr)) or attr == '__class__':
+				return ret
+			
 		return self._make_mock_if_required(attr)
 		
 	def __setattr__(self, attr, val):

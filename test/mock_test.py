@@ -174,7 +174,7 @@ class MockObjectAndWrapperTest(TestCase):
 		modified_wrapper.method('__repr__').returning('my repr!')
 		modified_wrapper.method('__str__').returning('my str!')
 		modified_wrapper.method('__len__').returning(5)
-			
+		
 		self.assertNotEqual(type(clean_wrapper.mock), type(modified_wrapper.mock))
 		self.assertEqual(type(clean_wrapper.mock).__name__, type(modified_wrapper.mock).__name__)
 		
@@ -185,6 +185,11 @@ class MockObjectAndWrapperTest(TestCase):
 		str_val = str(modified_wrapper.mock)
 		self.assertEqual(str_val, 'my str!')
 		self.assertTrue(modified_wrapper.child('__str__').called.once())
+	
+	def test_should_allow_setting_of_magic_methods_in_bulk(self):
+		wrapper = mock_wrapper().with_methods(__str__ = 's!', __len__ = 5)
+		self.assertEqual(str(wrapper.mock), 's!')
+		self.assertEqual(len(wrapper.mock), 5)
 	
 	def test_should_show_where_calls_were_made(self):
 		wrapper = mock_wrapper()
