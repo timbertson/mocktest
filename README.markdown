@@ -3,6 +3,7 @@
 similar in many ways to Michael Foord's popular Mock module.
 
 The main features are:
+
  - powerful expectation matching behaviour for mock objects
  - automatic verification of expectations (before each test's tearDown)
  - automatic rollback of inserted mock objects after each test
