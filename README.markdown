@@ -1,4 +1,4 @@
-## mocktest (version 0.2)
+## mocktest (version 0.3)
 ... is a powerful and easy-to-use mocking library, inspired by rspec and
 similar in many ways to Michael Foord's popular Mock module.
 
@@ -18,6 +18,16 @@ Issues / discussion:
 
 Cheese shop entry:
 [http://pypi.python.org/pypi/mocktest](http://pypi.python.org/pypi/mocktest/0.1)
+
+### Important notes for this version
+
+In mocktest 0.3, a few key objects and attributes have been renamed:
+
+ - the `mock_wrapper()` function is now just called `mock()`
+ - to get a raw mock from a mock wrapper, you now use `.raw` instead of `.mock`
+
+To sum up, where you would previously use `mock_wrapper().mock` you now would
+use `mock().raw`. The new names are more concise and less confusing to new users.
 
 ### Where did it come from?
 I am a big fan of rspec, but less of a fan of ruby as a whole.
