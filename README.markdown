@@ -64,14 +64,14 @@ There is one important addition to the `mocktest.TestCase` class:
 Where additional args can be:
 
  * `args=(arg1,arg2)`
- ** Fails unless the arguments provided to the exception constructor match the
-    given args
+   * Fails unless the arguments provided to the exception constructor match the
+     given args
  * `message="some string"`
- ** Fails unless the error message (i.e. str(exception)) is equal to this
-    message
+   * Fails unless the error message (i.e. str(exception)) is equal to this
+     message
  * `matches="string"` or `matches=re.compile("match_string", custom_flags)`
- ** Just like message, except a regex.search is required to return a match
-    instead of requiring the strings to be identical
+   * Just like message, except a regex.search is required to return a match
+     instead of requiring the strings to be identical
 
 This was adapted from [http://code.activestate.com/recipes/307970/](http://code.activestate.com/recipes/307970/)
 
