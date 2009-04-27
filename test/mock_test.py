@@ -4,7 +4,7 @@ import re
 
 import helper
 from mocktest import TestCase
-from mocktest import raw_mock, mock_wrapper
+from mocktest import raw_mock, mock
 from mocktest import MockError
 import mocktest
 
@@ -15,8 +15,8 @@ class MockObjectAndWrapperTest(TestCase):
 		self.assertTrue(isinstance(val, mock_class))
 		
 	def test_constructor(self):
-		mock = raw_mock()
-		wrapper = mock_wrapper(mock)
+		mock_ = raw_mock()
+		wrapper = mock(mock_)
 		self.assertFalse(wrapper.called, "called not initialised correctly")
 		self.assertTrue(wrapper.called.exactly(0), "call_count not initialised correctly")
 	
@@ -27,59 +27,59 @@ class MockObjectAndWrapperTest(TestCase):
 		wrapper.name = 'lil bobby mock'
 	
 	def test_default_return_value(self):
-		wrapper = mock_wrapper()
-		mock = wrapper.mock
+		wrapper = mock()
+		mock_ = wrapper.raw
 		self.assertTrue(wrapper.return_value is mocktest.silentmock.DEFAULT)
-		retval = mock()
+		retval = mock_()
 		self.is_a_mock(retval)
-		self.assertEqual(mock_wrapper(retval).name, 'return value for (unnamed mock)')
+		self.assertEqual(mock(retval).name, 'return value for (unnamed mock)')
 		self.is_a_mock(wrapper.return_value)
 
 	def test_default_accessor_value(self):
-		wrapper = mock_wrapper()
-		mock = wrapper.mock
-		retval = mock.child_a
+		wrapper = mock()
+		mock_ = wrapper.raw
+		retval = mock_.child_a
 		self.is_a_mock(retval)
-		self.assertEqual(mock_wrapper(retval).name, 'child_a')
+		self.assertEqual(mock(retval).name, 'child_a')
 		
 	def test_return_value(self):
-		wrapper = mock_wrapper().returning(None)
+		wrapper = mock().returning(None)
 		self.assertEquals(None, wrapper.return_value)
-		self.assertEquals(None, wrapper.mock())
+		self.assertEquals(None, wrapper.raw())
 	
 	def assert_mock_is_frozen(self, wrapper):
 		self.assertFalse(wrapper._modifiable_children)
-		self.assertRaises(AttributeError, lambda: wrapper.mock.nonexistant_child)
+		self.assertRaises(AttributeError, lambda: wrapper.raw.nonexistant_child)
 		def set_thingie():
-			wrapper.mock.set_nonexistant_child = 'x'
+			wrapper.raw.set_nonexistant_child = 'x'
 		self.assertRaises(AttributeError, lambda: set_thingie())
 		
 	def test_with_methods_should_set_return_values_and_freeze_mock(self):
-		wrapper = mock_wrapper().with_methods('blob', '_blob', foo='bar', x=123, _blobx='underscore!')
-		mock = wrapper.mock
+		wrapper = mock().with_methods('blob', '_blob', foo='bar', x=123, _blobx='underscore!')
+		mock_ = wrapper.raw
 		
-		self.is_a_mock(mock.blob())
-		self.is_a_mock(mock._blob())
-		self.assertEqual(mock.foo(), 'bar')
-		self.assertEqual(mock.x(), 123)
-		self.assertEqual(mock._blobx(), 'underscore!')
+		self.is_a_mock(mock_.blob())
+		self.is_a_mock(mock_._blob())
+		self.assertEqual(mock_.foo(), 'bar')
+		self.assertEqual(mock_.x(), 123)
+		self.assertEqual(mock_._blobx(), 'underscore!')
 		
 		self.assertEqual(sorted(wrapper._children.keys()), ['_blob', '_blobx', 'blob', 'foo','x'])
 		self.assert_mock_is_frozen(wrapper)
 	
 	def test_with_children_should_set_return_values_and_freeze_mock(self):
-		wrapper = mock_wrapper().with_children('blob', foo='bar', x=123)
-		mock = wrapper.mock
+		wrapper = mock().with_children('blob', foo='bar', x=123)
+		mock_ = wrapper.raw
 		
-		self.is_a_mock(mock.blob)
-		self.assertEqual(mock.foo, 'bar')
-		self.assertEqual(mock.x, 123)
+		self.is_a_mock(mock_.blob)
+		self.assertEqual(mock_.foo, 'bar')
+		self.assertEqual(mock_.x, 123)
 		
 		self.assertEqual(sorted(wrapper._children.keys()), ['blob', 'foo','x'])
 		self.assert_mock_is_frozen(wrapper)
 	
 	def test_name_as_first_arg_in_constructor(self):
-		wrapper = mock_wrapper(raw_mock("li'l mocky"))
+		wrapper = mock(raw_mock("li'l mocky"))
 		self.assertEqual(wrapper.name, "li'l mocky")
 	
 	class SpecClass:
@@ -89,115 +89,115 @@ class MockObjectAndWrapperTest(TestCase):
 			return "foo"
 		
 	def test_spec_class_in_constructor(self):
-		wrapper = mock_wrapper().with_spec(self.SpecClass)
+		wrapper = mock().with_spec(self.SpecClass)
 		self.assertEqual(wrapper._children.keys(), ['a','b'])
-		self.is_a_mock(wrapper.mock.a())
+		self.is_a_mock(wrapper.raw.a())
 		self.assert_mock_is_frozen(wrapper)
 		
-		self.assertRaises(AttributeError, lambda: wrapper.mock.__something__)
+		self.assertRaises(AttributeError, lambda: wrapper.raw.__something__)
 	
 	def test_spec_instance_in_constructor(self):
-		wrapper = mock_wrapper().with_spec(self.SpecClass())
+		wrapper = mock().with_spec(self.SpecClass())
 		self.assertEqual(wrapper._children.keys(), ['a','b'])
-		self.is_a_mock(wrapper.mock.a())
+		self.is_a_mock(wrapper.raw.a())
 		self.assert_mock_is_frozen(wrapper)
-		self.assertRaises(AttributeError, lambda: wrapper.mock.__something__)
+		self.assertRaises(AttributeError, lambda: wrapper.raw.__something__)
 	
 	def test_children_can_be_added_later(self):
-		wrapper = mock_wrapper()
-		wrapper.mock.foo = 1
-		wrapper.mock.bar = 2
+		wrapper = mock()
+		wrapper.raw.foo = 1
+		wrapper.raw.bar = 2
 		self.assertEqual(wrapper._children, {'foo':1, 'bar':2})
 	
 	def test_frozen(self):
-		wrapper = mock_wrapper().frozen().unfrozen()
-		wrapper.mock.child_a = 'baz'
-		self.assertEqual(wrapper.mock.child_a, 'baz')
+		wrapper = mock().frozen().unfrozen()
+		wrapper.raw.child_a = 'baz'
+		self.assertEqual(wrapper.raw.child_a, 'baz')
 		
-		wrapper = mock_wrapper().frozen()
+		wrapper = mock().frozen()
 		self.assert_mock_is_frozen(wrapper)
 	
 	def test_raising(self):
 		# class
-		wrapper = mock_wrapper().raising(SystemError)
-		self.assertRaises(SystemError, wrapper.mock)
+		wrapper = mock().raising(SystemError)
+		self.assertRaises(SystemError, wrapper.raw)
 	
 		# instance (with random extra args)
-		wrapper = mock_wrapper().raising(SystemError("this simply will not do"))
-		self.assertRaises(SystemError, lambda: wrapper.mock('a','b',foo='blah'))
+		wrapper = mock().raising(SystemError("this simply will not do"))
+		self.assertRaises(SystemError, lambda: wrapper.raw('a','b',foo='blah'))
 	
 	def test_children_and_methods_can_coexist(self):
-		wrapper = mock_wrapper().with_children(a='a').unfrozen().with_methods(b='b')
-		self.assertEqual(wrapper.mock.a, 'a')
-		self.assertEqual(wrapper.mock.b(), 'b')
+		wrapper = mock().with_children(a='a').unfrozen().with_methods(b='b')
+		self.assertEqual(wrapper.raw.a, 'a')
+		self.assertEqual(wrapper.raw.b(), 'b')
 	
 	def test_side_effect_is_called(self):
-		wrapper = mock_wrapper()
+		wrapper = mock()
 		def effect():
 			raise SystemError('kablooie')
 		wrapper.action = effect
 		
-		self.assertRaises(SystemError, wrapper.mock)
+		self.assertRaises(SystemError, wrapper.raw)
 		self.assertEquals(True, wrapper.called)
 		
-		wrapper = mock_wrapper()
+		wrapper = mock()
 		results = []
 		def effect(n):
 			results.append('call %s' % (n,))
 		wrapper.action = effect
 		
-		wrapper.mock(1)
+		wrapper.raw(1)
 		self.assertEquals(results, ['call 1'])
-		wrapper.mock(2)
+		wrapper.raw(2)
 		self.assertEquals(results, ['call 1','call 2'])
 	
 		sentinel = object()
-		wrapper = mock_wrapper().with_action(sentinel)
+		wrapper = mock().with_action(sentinel)
 		self.assertEquals(wrapper.action, sentinel)
 	
 	def test_side_effect_return_used(self):
 		def return_foo():
 			return "foo"
-		wrapper = mock_wrapper().with_action(return_foo)
-		self.assertEqual(wrapper.mock(), 'foo')
+		wrapper = mock().with_action(return_foo)
+		self.assertEqual(wrapper.raw(), 'foo')
 	
 	def test_side_effect_return_val_used_even_when_it_is_none(self):
 		def return_foo():
 			print "i've been called!"
-		wrapper = mock_wrapper().with_action(return_foo)
-		self.assertEqual(wrapper.mock(), None)
+		wrapper = mock().with_action(return_foo)
+		self.assertEqual(wrapper.raw(), None)
 	
 	def test_should_allow_setting_of_magic_methods(self):
-		clean_wrapper = mock_wrapper().named('clean')
-		modified_wrapper = mock_wrapper().named('modified')
+		clean_wrapper = mock().named('clean')
+		modified_wrapper = mock().named('modified')
 		
 		modified_wrapper.method('__repr__').returning('my repr!')
 		modified_wrapper.method('__str__').returning('my str!')
 		modified_wrapper.method('__len__').returning(5)
 		
-		self.assertNotEqual(type(clean_wrapper.mock), type(modified_wrapper.mock))
-		self.assertEqual(type(clean_wrapper.mock).__name__, type(modified_wrapper.mock).__name__)
+		self.assertNotEqual(type(clean_wrapper.raw), type(modified_wrapper.raw))
+		self.assertEqual(type(clean_wrapper.raw).__name__, type(modified_wrapper.raw).__name__)
 		
-		val = repr(modified_wrapper.mock)
+		val = repr(modified_wrapper.raw)
 		self.assertEqual(val, 'my repr!')
 		self.assertTrue(modified_wrapper.child('__repr__').called.once())
 	
-		str_val = str(modified_wrapper.mock)
+		str_val = str(modified_wrapper.raw)
 		self.assertEqual(str_val, 'my str!')
 		self.assertTrue(modified_wrapper.child('__str__').called.once())
 	
 	def test_should_allow_setting_of_magic_methods_in_bulk(self):
-		wrapper = mock_wrapper().with_methods(__str__ = 's!', __len__ = 5)
-		self.assertEqual(str(wrapper.mock), 's!')
-		self.assertEqual(len(wrapper.mock), 5)
+		wrapper = mock().with_methods(__str__ = 's!', __len__ = 5)
+		self.assertEqual(str(wrapper.raw), 's!')
+		self.assertEqual(len(wrapper.raw), 5)
 	
 	def test_should_show_where_calls_were_made(self):
-		wrapper = mock_wrapper()
-		mock = wrapper.mock
+		wrapper = mock()
+		mock_ = wrapper.raw
 		
-		mock(1,2,345)
+		mock_(1,2,345)
 		print str(wrapper.called)
-		self.assertTrue(re.search('// mock_test\.py:[0-9]+ +:: mock\(1,2,345\)', str(wrapper.called)))
+		self.assertTrue(re.search('// mock_test\.py:[0-9]+ +:: mock_\(1,2,345\)', str(wrapper.called)))
 
 	def test_should_compare_call_records_to_tuples_and_other_call_records(self):
 		args = (1,2,3)
@@ -216,11 +216,11 @@ class MockObjectAndWrapperTest(TestCase):
 			mocktest.silentmock.CallRecord(args, kwargs))
 		
 	def test_call_recording(self):
-		wrapper = mock_wrapper()
-		mock = wrapper.mock
+		wrapper = mock()
+		mock_ = wrapper.raw
 		
-		result = mock()
-		self.assertEquals(mock(), result, "different result from consecutive calls")
+		result = mock_()
+		self.assertEquals(mock_(), result, "different result from consecutive calls")
 		self.assertEquals(wrapper.call_list,
 			[
 				None, # called with nothing
@@ -230,8 +230,8 @@ class MockObjectAndWrapperTest(TestCase):
 		wrapper.reset()
 		self.assertEquals(wrapper.call_list, [])
 		
-		mock('first_call')
-		mock('second_call', 'arg2', call_=2)
+		mock_('first_call')
+		mock_('second_call', 'arg2', call_=2)
 		self.assertEquals(wrapper.call_list,
 			[
 				('first_call',),
@@ -247,7 +247,7 @@ class ProxyingTest(TestCase):
 			whoami.actually_called = True
 			return 'real_return'
 		
-		self.wrapper = mock_wrapper(called).returning('mock_return')
+		self.wrapper = mock(called).returning('mock_return')
 	
 	def test_should_not_let_you_set__should_intercept__twice(self):
 		self.wrapper.with_args(self, 'x',y=1)
@@ -257,12 +257,12 @@ class ProxyingTest(TestCase):
 	def test_should_act_as_mock_only_when_args_match(self):
 		self.wrapper.with_args(self, 'x',y=1)
 
-		self.assertEqual(self.wrapper.mock(self, 'x',y=1), 'mock_return')
+		self.assertEqual(self.wrapper.raw(self, 'x',y=1), 'mock_return')
 		self.assertTrue(self.wrapper.called.once())
 		self.assertFalse(self.actually_called)
 
 		# now this one should be ignored by the mock
-		self.assertEqual(self.wrapper.mock(self, 'y', y=1), 'real_return')
+		self.assertEqual(self.wrapper.raw(self, 'y', y=1), 'real_return')
 		self.assertTrue(self.wrapper.called.once())
 		self.assertTrue(self.actually_called)
 		
@@ -273,12 +273,12 @@ class ProxyingTest(TestCase):
 		
 		self.wrapper.when_args(are_single)
 		
-		self.assertEqual(self.wrapper.mock(self), 'mock_return')
+		self.assertEqual(self.wrapper.raw(self), 'mock_return')
 		self.assertTrue(self.wrapper.called.once())
 		self.assertFalse(self.actually_called)
 
 		# now this one should be ignored by the mock
-		self.assertEqual(self.wrapper.mock(self, 'y'), 'real_return')
+		self.assertEqual(self.wrapper.raw(self, 'y'), 'real_return')
 		self.assertTrue(self.wrapper.called.once())
 		self.assertTrue(self.actually_called)
 	
@@ -286,7 +286,7 @@ class ProxyingTest(TestCase):
 # -- options that clobber each other:
 class ClobberTest(TestCase):
 	def setUp(self):
-		self.mock = mock_wrapper().named("bob")
+		self.mock = mock().named("bob")
 	
 	def test_should_not_let_you_overwrite_return_value_with_action(self):
 		self.mock.returning('foo')

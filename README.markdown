@@ -118,15 +118,15 @@ some_object.foo raw mock.
 If your mock is not attached to anything, you can create a standalone mock
 wrapper:
 	
-	wrapper = mock_wrapper()
+	wrapper = mock()
 
 you can get the raw mock (to provide to your code) with:
 
-	raw_mock = wrapper.mock
+	raw_mock = wrapper.raw
 
 and if you just have a raw mock object, you can get a wrapper for it by calling:
 
-	wrapper = mock_wrapper(raw_mock)
+	wrapper = mock(raw_mock)
 
 This might seem a little confusing, but hopefully the examples below will help.
 
@@ -135,13 +135,13 @@ This might seem a little confusing, but hopefully the examples below will help.
 
 A mock has a few options for specifying its behaviour:
 
-	wrapper = mock_wrapper()
+	wrapper = mock()
 	wrapper.name = "my mock"
 	wrapper.return_value = "result!"
 
 which will result in:
 
-	>>> raw_mock = wrapper.mock
+	>>> raw_mock = wrapper.raw
 	>>> str(raw_mock)
 	'my mock'
 	
@@ -157,7 +157,7 @@ The other property your mock wrapper has is:
 
 resulting in:
 	
-	>>> wrapper.mock('a','b','c')
+	>>> wrapper.raw('a','b','c')
 	called with: ['a','b','c']
 	'result...'
 
@@ -169,15 +169,15 @@ Because setting properties like this is a little verbose, mock wrapper objects
 provide some helpful methods. These methods all return the mock wrapper itself,
 so you can chain them together.
 
-	mock_wrapper().named('my mock')
-	mock_wrapper().returning(10)
-	mock_wrapper().with_action(lambda x: x + 1)
+	mock().named('my mock')
+	mock().returning(10)
+	mock().with_action(lambda x: x + 1)
 
 In addition, there are some additional methods which don't directly
 relate to attributes:
 
-	mock_wrapper().raising(IOError)
-	mock_wrapper().raising(IOError('permission denied'))
+	mock().raising(IOError)
+	mock().raising(IOError('permission denied'))
 
 `raising` takes an exception class or instance and raises it when the mock is
 called. This overwrites the mock's action attribute (and will fail if you have
@@ -188,14 +188,14 @@ By default, calling `raw_mock.some_attribute` will force `some_attribute` to be
 added to the mock. If you don't want this behaviour, you can lock down the mock
 using:
 
-	mock_wrapper.frozen()
+	mock().frozen()
 
 This will raise an `AttributeError` when any new attribute is accessed (or set)
 on the mock.
 
-	mock_wrapper().with_children('x', 'y', z='zed')
-	mock_wrapper().with_methods('x','y', z='zed')
-	mock_wrapper().with_spec(some_object)
+	mock().with_children('x', 'y', z='zed')
+	mock().with_methods('x','y', z='zed')
+	mock().with_spec(some_object)
 
 Children and methods are similar. They take in any number of string arguments
 and keyword arguments. String arguments ensure that an attribute of that name
@@ -204,19 +204,19 @@ exists on the mock. Keyword arguments specify its value, as well.
 The difference between `methods` and `children` is that the value of a method
 is used for a child's return_value:
 
-	>>> wrapper = mock_wrapper().with_methods('y', z='zed')
-	>>> wrapper.mock.z()
+	>>> wrapper = mock().with_methods('y', z='zed')
+	>>> wrapper.raw.z()
 	'zed'
 
 whereas child values are used as-is:
 
-	>>> wrapper = mock_wrapper().with_children('y', z='zed')
-	>>> wrapper.mock.z
+	>>> wrapper = mock().with_children('y', z='zed')
+	>>> wrapper.raw.z
 	'zed'
 
 If you have an object that you want to mimic, you can use:
 
-	mock_wrapper().with_spec(some_object)
+	mock().with_spec(some_object)
 
 If `some_object` has attributes "foo" and "bar", so too will your mock. The
 values for these attributes are mocks; they do not copy the `spec_object`'s
@@ -230,8 +230,8 @@ added. If you want to control this yourself, use `wrapper.frozen()` and
 
 If you want to, you can also override special methods on a mock:
 
-	>>> wrapper = mock_wrapper().with_children( __len__ = lambda x: 5 )
-	>>> len(wrapper.mock)
+	>>> wrapper = mock().with_children( __len__ = lambda x: 5 )
+	>>> len(wrapper.raw)
 	5
 
 There's a bit of black magic to special method overriding, so please send bug
@@ -272,8 +272,8 @@ is executed)
 
 If you don't want an anchored mock, you can use:
 
-	wrapper = mock_wrapper()
-	raw_mock = wrapper.mock
+	wrapper = mock()
+	raw_mock = wrapper.raw
 	wrapper.is_expected
 
 You can then pass raw_mock into a function and ensure that it is called. But
@@ -366,7 +366,7 @@ weather the mock intercepts a method call in the first place. An example:
 	
 	# (note the use of `obj` to match the implicit `self` paramater)
 	wrapper = mock_on(obj).do_something.with_args(obj, 5).returning(500)
-	mock_do_something = wrapper.mock
+	mock_do_something = wrapper.raw
 	
 	# now if the arguments we give to the mock don't match what we supplied to
 	# with_args, the call will go ahead just as if we hadn't set a mock on obj:
@@ -386,7 +386,7 @@ Just like argument constraints, you can also use `where_args` - e.g:
 		return isinstance(b, str)
 	
 	wrapper = mock_on(obj).do_something.where_args(second_arg_is_a_string).returning("STRING")
-	mock_do_something = wrapper.mock
+	mock_do_something = wrapper.raw
 	
 	assert mock_do_something(1) == 11
 	assert mock_do_something(2) == 12
@@ -404,19 +404,19 @@ so far. `called` is almost identical to `is_expected`. Unlike an expectation
 object, The result of a `called` expression should be compared to `True` or
 `False` to check whether the expressed call(s) did indeed happen.
 
-	self.assertTrue(mock_wrapper.called.once().with_args('foo'))
-	if not mock_wrapper.called.once():
+	self.assertTrue(mock().called.once().with_args('foo'))
+	if not mock().called.once():
 		assert False, "Things went bad!"
 
 But the most useful feature of of `called` is its ability to retrieve the calls
 that the mock has received. So in the following example:
 
-	wrapper = mock_wrapper()
-	mock = wrapper.mock
+	wrapper = mock()
+	raw_mock = wrapper.raw
 
-	mock('a', b='foo')
-	mock('b')
-	mock(b='bar')
+	raw_mock('a', b='foo')
+	raw_mock('b')
+	raw_mock(b='bar')
 	
 	>>> wrapper.called.thrice().get_calls()
 	[(('a',), {'b': 'foo'}), ('b',), (None, {'b': 'bar'})]

@@ -3,7 +3,7 @@ import sys
 
 import helper
 from mocktest import TestCase, pending
-from mocktest import mock_on, raw_mock, mock_wrapper
+from mocktest import mock_on, raw_mock, mock
 import mocktest
 mock_class = mocktest.silentmock.SilentMock
 
@@ -71,7 +71,7 @@ class MockAnchorTest(TestCase):
 	
 	def test_should_disallow_replacing_mocks(self):
 		obj = RealClass()
-		obj.foo = mock_wrapper().mock
+		obj.foo = mock().raw
 		def set_foo():
 			mock = mock_on(obj).foo
 		self.assertRaises(TypeError, set_foo)
@@ -95,15 +95,15 @@ class MockAnchorTest(TestCase):
 		self.assertEqual(mock_anchor.expects('foo'), mock_anchor.foo.is_expected)
 
 		# not part of the test -- just to satisfy the above expectation
-		mock_foo = mock_anchor.foo.mock
+		mock_foo = mock_anchor.foo.raw
 		mock_foo()
 
 	def test_should_warn_on_nonexistant_attributes(self):
-		stderr = mock_on(sys).stderr
+		stderr = mock_on(sys).stderr.named('stderr')
 
 		mock_on(real_object).c
-
-		self.assertEqual(stderr.child('write').called.get_calls(),[
+		
+		self.assertEqual(stderr.method('write').called.get_calls(),[
 			('Warning: object %s has no attribute "c"' % (real_object,),),
 			('\n',)
 		])
@@ -164,10 +164,10 @@ class MockAnchorTest(TestCase):
 		
 		wrapper = mock_on(f).callme.with_('a')
 		
-		wrapper.mock('a')
+		wrapper.raw('a')
 		self.assertTrue(wrapper.called.once())
 		self.assertFalse(f.actually_called)
 	
-		wrapper.mock('b')
+		wrapper.raw('b')
 		self.assertTrue(wrapper.called.once())
 		self.assertTrue(f.actually_called)

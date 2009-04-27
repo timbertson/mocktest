@@ -3,10 +3,10 @@ MockWrapper objects are to be used in test code. They allow
 behaviour and expectations to be set on a SilentMock.
 
 A wrapper can be created for an existing SilentMock with
-mock_wrapper(silent_mock).
+mock(silent_mock).
 
-A MockWrapper / SilentMock pair can be created with mock_wrapper()
-(the silent mock object is accessible via mock_wrapper()_)
+A MockWrapper / SilentMock pair can be created with mock()
+(the silent mock object is accessible via wrapper.raw)
 """
 __unittest = True
 
@@ -15,19 +15,19 @@ from silentmock import SilentMock, raw_mock
 from mockmatcher import MockMatcher
 from mockerror import MockError
 
-def mock_wrapper(mock = None, proxied = None):
+def mock(raw = None, proxied = None):
 	"""
 	return a mock wrapper for the given silent mock, delegating to `proxied`
 	when a given call is not set to be intercepted by the mock. You can use
 	the mock wrapper to set expectations or get invocation details for a silent mock
 	"""
-	if mock is None:
-		mock = raw_mock()
-	if (not isinstance(mock, SilentMock)) and proxied is None:
-		# make mock_wrapper(real_obj) act like mock_wrapper(None, proxied=real_obj)
-		proxied = mock
-		mock = raw_mock()
-	return MockWrapper(mock, proxied)
+	if raw is None:
+		raw = raw_mock()
+	if (not isinstance(raw, SilentMock)) and proxied is None:
+		# make mock(real_obj) act like mock(None, proxied=real_obj)
+		proxied = raw
+		raw = raw_mock()
+	return MockWrapper(raw, proxied)
 
 class MockWrapper(RealSetter):
 	"""
@@ -51,14 +51,14 @@ class MockWrapper(RealSetter):
 	
 	# delegate getting and setting to SilentMock
 	def _set(self, **kwargs):
-		self.mock._mock_set(**kwargs)
+		self._mock._mock_set(**kwargs)
 	
 	def _get(self, attr):
-		return self.mock._mock_get(attr)
+		return self._mock._mock_get(attr)
 	
 	def _get_mock(self):
 		return self._mock
-	mock = property(_get_mock)
+	raw = property(_get_mock)
 			
 	# mockExpecation integration
 	@classmethod
@@ -85,7 +85,7 @@ class MockWrapper(RealSetter):
 	
 	def __wrapped_child(self, attr):
 		"return a mock wrapper for an attribute of self"
-		return type(self)(getattr(self.mock, attr))
+		return type(self)(getattr(self._mock, attr))
 	
 	def __expect_call_on(self, obj):
 		matcher = MockMatcher(obj)
@@ -103,19 +103,19 @@ class MockWrapper(RealSetter):
 		return 'mock wrapper for \"%s\"' %(self._get('name'))
 
 	def __setattr__(self, attr, val):
-		self.mock._mock_set(**{attr:val})
+		self._mock._mock_set(**{attr:val})
 
 	def __getattr__(self, attr):
-		return self.mock._mock_get(attr)
+		return self._mock._mock_get(attr)
 		
 	def __delattr__(self, attr):
-		self.mock._mock_del(attr)
+		self._mock._mock_del(attr)
 	
 	def reset(self):
-		self.mock._mock_reset()
+		self._mock._mock_reset()
 	
 	def child(self, val):
-		return mock_wrapper(self.mock._mock_get_child(val))
+		return mock(self._mock._mock_get_child(val))
 	method = child
 	
 	# convenience methods for dsl-like chaining
@@ -147,7 +147,7 @@ class MockWrapper(RealSetter):
 	
 	def _ensure_can_set_intercept(self):
 		if self.should_intercept is not True:
-			raise MockError("an interception condition (`with_args` or `where_args`) has already been set on mock %r" % (self.mock))
+			raise MockError("an interception condition (`with_args` or `where_args`) has already been set on mock %r" % (self._mock))
 
 	def raising(self, ex):
 		def mock_raise(*args, **kwargs):
@@ -172,9 +172,9 @@ class MockWrapper(RealSetter):
 	def _with_children(self, *children, **kwchildren):
 		"""internally add children, but don't freeze the mock"""
 		for child in children:
-			getattr(self.mock, child)
+			getattr(self._mock, child)
 		for child, val in kwchildren.items():
-			setattr(self.mock, child, val)
+			setattr(self._mock, child, val)
 		return self
 	
 	def frozen(self):

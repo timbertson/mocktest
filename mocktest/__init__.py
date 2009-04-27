@@ -3,15 +3,15 @@ __all__ = [
 	'expect',
 	'ignore',
 	'mock_on',
-	'mock_wrapper',
+	'mock',
 	'pending',
 	'raw_mock',
 ]
 
-from mock import *
-from mock import _setup, _teardown
+from core import *
+from core import _setup, _teardown # not imported by all
 from mocktest import *
 from mockmatcher import *
 from mockerror import MockError
 
-__version__ = '0.2.0'
+__version__ = '0.3.0'

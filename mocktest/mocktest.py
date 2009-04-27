@@ -2,7 +2,7 @@
 mocktest includes:
 
  - TestCase: a subclass of unittest.TestCase with the following additions:
-	- mock._setup and _teardown are automatically called between tests,
+	- core._setup and _teardown are automatically called between tests,
 	  ensuring that expectations on mock objects are always checked
 	- enhanced versions of assertTrue / False, assertRaises
 
@@ -20,7 +20,7 @@ import unittest
 import re
 import sys
 import os
-import mock
+import core
 
 __unittest = True
 
@@ -107,10 +107,10 @@ class TestCase(unittest.TestCase):
 		self.tearDown = _compose(self.__teardown, subclass_teardown)
 
 	def __setup(self):
-		mock._setup()
+		core._setup()
 	
 	def __teardown(self):
-		mock._teardown()
+		core._teardown()
 
 	def __assert_not_callable(self, expr):
 		if callable(expr):

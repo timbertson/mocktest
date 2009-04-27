@@ -19,7 +19,7 @@ class MockMatcher(object):
 	call_list = property(_call_list)
 	
 	def __init__(self, mock_wrapper):
-		self._mock = mock_wrapper.mock
+		self._mock = mock_wrapper.raw
 		self._mock_wrapper = mock_wrapper
 	
 	def with_args(self, *args, **kwargs):

@@ -5,7 +5,7 @@ import os
 
 import helper
 import mocktest
-from mocktest import mock_wrapper, raw_mock, pending, ignore, expect
+from mocktest import mock, raw_mock, pending, ignore, expect, core
 
 def assert_desc(expr):
 	assert expr, expr
@@ -23,13 +23,13 @@ class TestAutoSpecVerification(unittest.TestCase):
 
 	def setUp(self):
 		mocktest._setup()
-		self.stderr = mock_wrapper().named('stderr')
-		sys.stderr = self.stderr.mock
-		self.output = mock_wrapper(sys.stderr.write)
-		print "all expectations is %r" % (mocktest.mock.MockWrapper._all_expectations,)
+		self.stderr = mock().named('stderr')
+		sys.stderr = self.stderr.raw
+		self.output = mock(sys.stderr.write)
+		print "all expectations is %r" % (core.MockWrapper._all_expectations,)
 	
 	def tearDown(self):
-		print "all expectations is %r" % (mocktest.mock.MockWrapper._all_expectations,)
+		print "all expectations is %r" % (core.MockWrapper._all_expectations,)
 		mocktest._teardown()
 	
 	def run_suite(self, class_):
@@ -59,8 +59,8 @@ class TestAutoSpecVerification(unittest.TestCase):
 		backup_setup = mocktest._setup
 		backup_teardown = mocktest._teardown
 		
-		mocktest.mock._setup = mock_wrapper().with_action(lambda: capture("_setup")).mock
-		mocktest.mock._teardown = mock_wrapper().with_action(lambda: capture("_teardown")).mock
+		core._setup = mock().with_action(lambda: capture("_setup")).raw
+		core._teardown = mock().with_action(lambda: capture("_teardown")).raw
 		
 		class Foo(mocktest.TestCase):
 			def setUp(self):
@@ -75,12 +75,12 @@ class TestAutoSpecVerification(unittest.TestCase):
 		self.assertTrue(result.wasSuccessful())
 		self.assertEqual(lines, ['_setup', 'setup', 'main', '_teardown', 'teardown'])
 		
-		mocktest.mock._setup = backup_setup
-		mocktest.mock._teardown = backup_teardown
+		core._setup = backup_setup
+		core._teardown = backup_teardown
 	
 	def test_ignore(self):
 		callback = raw_mock()
-		mock_wrapper(callback).is_expected.exactly(0).times
+		mock(callback).is_expected.exactly(0).times
 			
 		@ignore
 		def test_failure(self):
@@ -91,7 +91,7 @@ class TestAutoSpecVerification(unittest.TestCase):
 	
 	def test_should_ignore_with_description(self):
 		callback = raw_mock()
-		mock_wrapper(callback).is_expected.exactly(0).times
+		mock(callback).is_expected.exactly(0).times
 			
 		@ignore('not done yet')
 		def test_failure(self):
@@ -127,7 +127,7 @@ class TestAutoSpecVerification(unittest.TestCase):
 		self.assertEqual(self.run_method(test_successful_pending_test).wasSuccessful(), False)
 		assert_desc(self.output.called.with_('test_successful_pending_test PASSED unexpectedly '))
 		
-		self.assertEqual(mock_wrapper(callback).called.exactly(2).times.get_calls(), [('a',), ('c',)])
+		self.assertEqual(mock(callback).called.exactly(2).times.get_calls(), [('a',), ('c',)])
 	
 	def test_pending_should_raise_skipTest(self):
 		@pending
@@ -145,7 +145,7 @@ class TestAutoSpecVerification(unittest.TestCase):
 		
 		e = None
 		try:
-			mock_wrapper()
+			mock()
 		except Exception, e_:
 			e = e_
 
@@ -157,7 +157,7 @@ class TestAutoSpecVerification(unittest.TestCase):
 	def test_expectation_errors_should_be_failures(self):
 		class myTest(mocktest.TestCase):
 			def test_a(self):
-				foo = mocktest.mock_wrapper()
+				foo = mocktest.mock()
 				foo.expects('blah').once()
 		results = self.run_suite(myTest)
 		self.assertEqual(1, results.testsRun)
@@ -322,7 +322,7 @@ class TestAutoSpecVerification(unittest.TestCase):
 
 	def test_expectation_formatting(self):
 		self.assertEqual(
-			repr(mock_wrapper().called.with_('foo', bar=1).twice()),
+			repr(mock().called.with_('foo', bar=1).twice()),
 			'\n'.join([
 				'Mock "unnamed mock" did not match expectations:',
 				' expected exactly 2 calls with arguments equal to: \'foo\', bar=1',
@@ -330,22 +330,22 @@ class TestAutoSpecVerification(unittest.TestCase):
 		)
 	
 	def test_expect_should_work_on_a_mock_or_wrapper(self):
-		wrapper = mock_wrapper()
-		mock = wrapper.mock
+		wrapper = mock()
+		mock_ = wrapper.raw
 		
-		expect(mock.a).once()
+		expect(mock_.a).once()
 		wrapper.expects('b').once()
 		wrapper.child('c').is_expected.once()
 
-		self.assertTrue(len(mocktest.mockwrapper.MockWrapper._all_expectations) == 3)
+		self.assertTrue(len(core.MockWrapper._all_expectations) == 3)
 		
-		mock.a()
-		mock.b()
-		mock.c()
+		mock_.a()
+		mock_.b()
+		mock_.c()
 
 
 	def test_reality_formatting(self):
-		m = mock_wrapper().named('ze_mock').mock
+		m = mock().named('ze_mock').raw
 		m(1,2,3)
 		m(foo='bar')
 		m()
@@ -353,7 +353,7 @@ class TestAutoSpecVerification(unittest.TestCase):
 		
 		line_agnostic_repr = [
 			re.sub('\.py:[0-9 ]{3} ', '.py:LINE ', line)
-			for line in repr(mock_wrapper(m).called.once()).split('\n')]
+			for line in repr(mock(m).called.once()).split('\n')]
 		
 		expected_lines = [
 			'Mock "ze_mock" did not match expectations:',
@@ -378,7 +378,7 @@ class TestAutoSpecVerification(unittest.TestCase):
 		self.assertTrue(len(mocktest_file_names) > 2) # make sure we have some file names
 		def ensure_no_mocktest_files_appear_in_failure(failure_func):
 			result = self.run_method(failure_func)
-			self.assertEqual(len(result.failures), 1)
+			self.assertEqual(len(result.failures), 1, "test case %s was expected to fail but didn't: %r" % (failure_func.__name__, result))
 			lines = result.failures[0][1].splitlines()
 			for filename in mocktest_file_names:
 				lines_containing_mocktest_internal_files = [line for line in lines if (filename + '"') in line]
@@ -390,7 +390,7 @@ class TestAutoSpecVerification(unittest.TestCase):
 		ensure_no_mocktest_files_appear_in_failure(lambda slf: slf.assertRaises(TypeError, self.make_error))
 		
 		def failing_mock_expectation(slf):
-			mocktest.mock_wrapper().is_expected
+			mocktest.mock().is_expected
 			# emulate a refresh
 			try:
 				mocktest._teardown()
@@ -402,14 +402,14 @@ class TestAutoSpecVerification(unittest.TestCase):
 
 class MockTestTest(mocktest.TestCase):
 	def test_should_do_expectations(self):
-		f = mock_wrapper()
+		f = mock()
 		f.expects('foo').once()
-		f.mock.foo('a')
-		f.mock.foo()
+		f.raw.foo('a')
+		f.raw.foo()
 		self.assertRaises(AssertionError, mocktest._teardown, matching=re.compile('Mock "foo" .*expected exactly 1 calls.* received 2 calls.*', re.DOTALL))
 		
 		# pretend we're in a new test (wipe the expected calls register)
-		mocktest.mock.MockWrapper._all_expectations = []
+		core.MockWrapper._all_expectations = []
 
 class Mystr(object):
 	def __init__(self, s):
