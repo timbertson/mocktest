@@ -10,11 +10,8 @@ The main features are:
 
 It's released under the BSD licence (see the LICENCE file).
 
-Source / Readme:
+Source / Readme / Issues:
 [http://github.com/gfxmonk/mocktest/tree/master](http://github.com/gfxmonk/mocktest/tree/master)
-
-Issues / discussion:
-[http://code.google.com/p/python-mocktest/](http://code.google.com/p/python-mocktest/)
 
 Cheese shop entry:
 [http://pypi.python.org/pypi/mocktest](http://pypi.python.org/pypi/mocktest/0.1)
