@@ -96,6 +96,10 @@ class MockObjectAndWrapperTest(TestCase):
 		
 		self.assertRaises(AttributeError, lambda: wrapper.raw.__something__)
 	
+	def test_should_set_name_if_single_string_constructor_arg(self):
+		wrapper = mock('foo')
+		self.assertEqual(wrapper.name, 'foo')
+	
 	def test_spec_instance_in_constructor(self):
 		wrapper = mock().with_spec(self.SpecClass())
 		self.assertEqual(wrapper._children.keys(), ['a','b'])

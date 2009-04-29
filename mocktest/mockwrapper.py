@@ -15,19 +15,38 @@ from silentmock import SilentMock, raw_mock
 from mockmatcher import MockMatcher
 from mockerror import MockError
 
-def mock(raw = None, proxied = None):
+def mock(*args):
 	"""
 	return a mock wrapper for the given silent mock, delegating to `proxied`
 	when a given call is not set to be intercepted by the mock. You can use
 	the mock wrapper to set expectations or get invocation details for a silent mock
+	
+	usage:
+	mock("name of mock"), or
+	mock(raw_mock_to_wrap), or
+	mock(proxied_object), or
+	mock(raw, proxied)
 	"""
+	raw, name, proxied = None, None, None
+	if len(args) == 1:
+		arg = args[0]
+		if isinstance(arg, str):
+			name = arg
+		elif isinstance(arg, SilentMock):
+			raw = arg
+		else:
+			proxied = arg
+	elif len(args) == 2:
+		raw, proxied = args
+	elif len(args) == 0:
+		# this is ok too
+		pass
+	else:
+		raise TypeError("mock takes zero, one, or two arguments - got %s" % (len(args),))
+		
 	if raw is None:
 		raw = raw_mock()
-	if (not isinstance(raw, SilentMock)) and proxied is None:
-		# make mock(real_obj) act like mock(None, proxied=real_obj)
-		proxied = raw
-		raw = raw_mock()
-	return MockWrapper(raw, proxied)
+	return MockWrapper(raw, proxied, name)
 
 class MockWrapper(RealSetter):
 	"""
@@ -37,7 +56,7 @@ class MockWrapper(RealSetter):
 	all setattr and getattr calls go via the attached silent mock's _mock_get and _mock_set
 	"""
 	_all_expectations = None
-	def __init__(self, wrapped_mock = None, proxied = None):
+	def __init__(self, wrapped_mock = None, proxied = None, name = None):
 		if self.__class__._all_expectations is None:
 			raise RuntimeError(("%s._setup has not been called. " +
 				"Make sure you are inheriting from mocktest.TestCase, " +
@@ -48,6 +67,8 @@ class MockWrapper(RealSetter):
 			raise TypeError("expected SilentMock, got %s" % (wrapped_mock.__class__.__name__,))
 		self._real_set(_mock = wrapped_mock)
 		self._proxied = proxied
+		if name:
+			self.name = name
 	
 	# delegate getting and setting to SilentMock
 	def _set(self, **kwargs):
