@@ -168,3 +168,6 @@ class SilentMock(RealSetter, SingletonClass):
 
 	def __str__(self):
 		return str(self._mock_get('name'))
+	
+	def __repr__(self):
+		return '<raw mock "%s">' % (str(self),)
