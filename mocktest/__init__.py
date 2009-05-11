@@ -4,6 +4,7 @@ __all__ = [
 	'ignore',
 	'mock_on',
 	'mock',
+	'stub',
 	'pending',
 	'raw_mock',
 ]
@@ -13,5 +14,6 @@ from core import _setup, _teardown # not imported by all
 from mocktest import *
 from mockmatcher import *
 from mockerror import MockError
+from stub import stub
 
 __version__ = '0.3.0'
