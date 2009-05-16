@@ -112,10 +112,13 @@ class MockWrapper(RealSetter):
 		matcher = MockMatcher(obj)
 		self.__class__._all_expectations.append(matcher)
 		return matcher
-	
+
+	def __expect_none(self):
+		return self.is_expected.exactly(0).times
 	def __expect_call_matcher(self):
 		return self.__expect_call_on(self)
 	is_expected = property(__expect_call_matcher)
+	is_not_expected = property(__expect_none)
 
 	def expects(self, methodname):
 		return self.__expect_call_on(self.__wrapped_child(methodname))

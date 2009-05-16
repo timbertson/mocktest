@@ -112,12 +112,7 @@ class TestCase(unittest.TestCase):
 	def __teardown(self):
 		core._teardown()
 
-	def __assert_not_callable(self, expr):
-		if callable(expr):
-			raise TypeError, "Assertion called on a callable object - this usually means you forgot to call it"
-
 	def assert_(self, expr, desc = None):
-		self.__assert_not_callable(expr)
 		if desc is None:
 			desc = expr
 		super(TestCase, self).assert_(expr, desc)
@@ -126,7 +121,6 @@ class TestCase(unittest.TestCase):
 	failUnless = assert_
 	
 	def assertFalse(self, expr, desc = None):
-		self.__assert_not_callable(expr)
 		if desc is None:
 			desc = "Expected (%r) to be False" % (expr,)
 			super(TestCase, self).assertFalse(expr, desc)

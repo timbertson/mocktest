@@ -22,7 +22,7 @@ class SomeError(RuntimeError):
 class TestAutoSpecVerification(unittest.TestCase):
 
 	def setUp(self):
-		mocktest._setup()
+		core._setup()
 		self.stderr = mock().named('stderr')
 		sys.stderr = self.stderr.raw
 		self.output = mock(sys.stderr.write)
@@ -30,15 +30,15 @@ class TestAutoSpecVerification(unittest.TestCase):
 	
 	def tearDown(self):
 		print "all expectations is %r" % (core.MockWrapper._all_expectations,)
-		mocktest._teardown()
+		core._teardown()
 	
 	def run_suite(self, class_):
-		mocktest._teardown()
+		core._teardown()
 		suite = unittest.makeSuite(class_)
 		result = unittest.TestResult()
 		suite.run(result)
 		ret = result
-		mocktest._setup()
+		core._setup()
 		return result
 	
 	def run_method(self, test_func):
@@ -56,22 +56,24 @@ class TestAutoSpecVerification(unittest.TestCase):
 		lines = []
 		def capture(line):
 			lines.append(line)
-		backup_setup = mocktest._setup
-		backup_teardown = mocktest._teardown
+		backup_setup = core._setup
+		backup_teardown = core._teardown
 		
 		core._setup = mock().with_action(lambda: capture("_setup")).raw
 		core._teardown = mock().with_action(lambda: capture("_teardown")).raw
 		
 		class Foo(mocktest.TestCase):
 			def setUp(self):
-				print "SETUP"
 				capture("setup")
 			def tearDown(self):
 				capture("teardown")
 			def test_main_is_called(self):
 				capture("main")
 
-		result = self.run_suite(Foo)
+		suite = unittest.makeSuite(Foo)
+		result = unittest.TestResult()
+		suite.run(result)
+
 		self.assertTrue(result.wasSuccessful())
 		self.assertEqual(lines, ['_setup', 'setup', 'main', '_teardown', 'teardown'])
 		
@@ -141,7 +143,7 @@ class TestAutoSpecVerification(unittest.TestCase):
 			print "cant find SkipTest, so this test case won't work"
 	
 	def test_invalid_usage_after_teardown(self):
-		mocktest._teardown()
+		core._teardown()
 		
 		e = None
 		try:
@@ -152,7 +154,7 @@ class TestAutoSpecVerification(unittest.TestCase):
 		self.assertFalse(e is None, "no exception was raised")
 		self.assertEqual(e.__class__, RuntimeError)
 		self.assertEqual(e.message, "MockWrapper._setup has not been called. Make sure you are inheriting from mocktest.TestCase, not unittest.TestCase")
-		mocktest._setup()
+		core._setup()
 		
 	def test_expectation_errors_should_be_failures(self):
 		class myTest(mocktest.TestCase):
@@ -272,24 +274,6 @@ class TestAutoSpecVerification(unittest.TestCase):
 		result = self.run_method(test_raise_match)
 		self.assertTrue(result.wasSuccessful())
 	
-	def test_assert_true_fails_on_callables(self):
-		def assert_truth(s):
-			s.assertTrue(lambda x: True)
-		result = self.run_method(assert_truth)
-		self.assertFalse(result.wasSuccessful())
-
-	def test_assert_false_fails_on_callables(self):
-		def assert_falseth(s):
-			s.assertFalse(lambda x: False)
-		result = self.run_method(assert_falseth)
-		self.assertFalse(result.wasSuccessful())
-
-	def test_assert__fails_on_callables(self):
-		def assert_assert_(s):
-			s.assert_(lambda x: True)
-		result = self.run_method(assert_assert_)
-		self.assertFalse(result.wasSuccessful())
-	
 	def test_assert_raises_verifies_type(self):
 		def test_raise_mismatch_type(s):
 			s.assertRaises(TypeError, self.make_error)
@@ -342,7 +326,18 @@ class TestAutoSpecVerification(unittest.TestCase):
 		mock_.a()
 		mock_.b()
 		mock_.c()
-
+	
+	def test_is_not_expected(self):
+		wrapper = mock()
+		mock_ = wrapper.raw
+		
+		expect(mock_.a).once()
+		wrapper.child('b').is_not_expected
+		mock_.a()
+		
+		core._teardown()
+		core._setup()
+		
 
 	def test_reality_formatting(self):
 		m = mock().named('ze_mock').raw
@@ -393,9 +388,9 @@ class TestAutoSpecVerification(unittest.TestCase):
 			mocktest.mock().is_expected
 			# emulate a refresh
 			try:
-				mocktest._teardown()
+				core._teardown()
 			finally:
-				mocktest._setup()
+				core._setup()
 		ensure_no_mocktest_files_appear_in_failure(failing_mock_expectation)
 
 		
@@ -406,7 +401,7 @@ class MockTestTest(mocktest.TestCase):
 		f.expects('foo').once()
 		f.raw.foo('a')
 		f.raw.foo()
-		self.assertRaises(AssertionError, mocktest._teardown, matching=re.compile('Mock "foo" .*expected exactly 1 calls.* received 2 calls.*', re.DOTALL))
+		self.assertRaises(AssertionError, core._teardown, matching=re.compile('Mock "foo" .*expected exactly 1 calls.* received 2 calls.*', re.DOTALL))
 		
 		# pretend we're in a new test (wipe the expected calls register)
 		core.MockWrapper._all_expectations = []

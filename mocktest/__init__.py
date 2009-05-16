@@ -1,19 +1,8 @@
-__all__ = [
-	'TestCase',
-	'expect',
-	'ignore',
-	'mock_on',
-	'mock',
-	'stub',
-	'pending',
-	'raw_mock',
-]
-
 from core import *
-from core import _setup, _teardown # not imported by all
 from mocktest import *
 from mockmatcher import *
-from mockerror import MockError
-from stub import stub
+from mockerror import *
+from stub import *
+from matchers import *
 
 __version__ = '0.3.0'

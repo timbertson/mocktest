@@ -1,3 +1,4 @@
+from matchers import Matcher
 from callrecord import CallRecord
 __unittest = True
 
@@ -182,7 +183,7 @@ class MockMatcher(object):
 	def _args_equal_func(self, args, kwargs):
 		"""
 		returns a function that returns whether its arguments match the
-		args (tuple), and its kewyord arguments match the kwargs (dict)
+		args (tuple), and its keyword arguments match the kwargs (dict)
 		"""
 		def check(*a, **k):
 			# print "Comapring args:"
@@ -190,6 +191,11 @@ class MockMatcher(object):
 			# print "%r      %r" % (args, kwargs)
 			return a == args and k == kwargs
 		return check
+	
+	def _equals_or_matches(self, expected, actual):
+		if isinstance(expected, Matcher):
+			return expected.matches(actual)
+		return expected == actual
 
 	# multiplicity-checking operators
 	def _eq(self, a, b):

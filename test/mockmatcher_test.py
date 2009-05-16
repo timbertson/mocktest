@@ -129,6 +129,21 @@ class TestPySpec(TestCase):
 		self.assertTrue(wrapper_.child('foo').called.twice().where_args(lambda *args: all([x < 3 for x in args])))
 		self.assertTrue(wrapper_.child('foo').called.exactly(4).times)
 	
+	def test_should_allow_matchers_for_argument_specs(self):
+		wrapper_ = mock()
+		mock_ = wrapper_.raw
+		
+		mock_.raw(foo='hjdsfhsdfds')
+		
+		class WithAttribute_foo(object):
+			def foo(self):
+				pass
+		
+		mock_.raw(WithAttribute_foo(), 1)
+		
+		self.assertTrue(mock_.called.once().with_(any_string))
+		self.assertTrue(mock_.called.once().with_(object_with('foo')))
+	
 	def test_should_return_arguments_for_a_subset_of_calls_given_conditions(self):
 		wrapper_ = mock()
 		mock_ = wrapper_.raw

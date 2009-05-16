@@ -2,7 +2,7 @@ import os
 import sys
 
 import helper
-from mocktest import TestCase, pending
+from mocktest import TestCase, pending, core
 from mocktest import mock_on, raw_mock, mock
 import mocktest
 mock_class = mocktest.silentmock.SilentMock
@@ -25,8 +25,8 @@ real_object = RealClass()
 
 class MockAnchorTest(TestCase):
 	def downup(self):
-		mocktest._teardown()
-		mocktest._setup()
+		core._teardown()
+		core._setup()
 		
 	def test_should_attach_new_mocks_to_parent(self):
 		mock_on(real_object).a
