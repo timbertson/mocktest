@@ -71,10 +71,10 @@ class MockAnchor(RealSetter):
 	
 	def _make_mock_if_required(self, name, in_dict=False):
 		if name not in self._children:
+			target = self._get_target_for_method(name, in_dict)
 			real_child = self._backup_child(name, in_dict)
 			new_child = MockWrapper(raw_mock(name=name), proxied=real_child)
 			self._child_store(in_dict)[name] = new_child
-			target = self._get_target_for_method(name, in_dict)
 			self._insertion_func(in_dict)(target, name, new_child._mock)
 		return self._child_store(in_dict)[name]
 	

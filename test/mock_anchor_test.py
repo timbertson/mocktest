@@ -135,6 +135,9 @@ class MockAnchorTest(TestCase):
 		self.downup()
 		self.assertTrue(hasattr(C(), 'x'))
 
+	def test_give_a_useful_message_when_overriding_an_inbuilt_method_is_impossible(self):
+		self.assertRaises(TypeError, lambda: mock_on('some string').__str__.returning('fake'), message='Can\'t alter class of \'str\'')
+
 	def test_should_allow_setting_of_special_class_methods(self):
 		# note: all __**__ methods get set on the class object (except __init__)
 		class C(object):
@@ -149,7 +152,7 @@ class MockAnchorTest(TestCase):
 		
 		self.assertEqual(str(instance), 'fakestr')
 		self.assertTrue(str_mock.called.once())
-		
+
 	def test_should_not_warn_if_quiet_specified(self):
 		stderr = mock_on(sys).stderr
 		mock_on(real_object, quiet=True).c
