@@ -135,13 +135,14 @@ class SilentMock(RealSetter, SingletonClass):
 		self._assign_special_method(attr, val)
 		self._mock_get('_children')[attr] = val
 
-	def _mock_get_child(self, name):
+	def _mock_get_child(self, name, force=False):
 		def _new():
 			self._mock_get('_children')[name] = raw_mock(name=name)
 			return self._mock_get('_children')[name]
 		
 		if name not in self._mock_get('_children'):
-			self._mock_fail_if_no_child_allowed(name)
+			if not force:
+				self._mock_fail_if_no_child_allowed(name)
 			child = _new()
 		else:
 			# child already exists

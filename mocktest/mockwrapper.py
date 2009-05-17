@@ -106,7 +106,10 @@ class MockWrapper(RealSetter):
 	
 	def __wrapped_child(self, attr):
 		"return a mock wrapper for an attribute of self"
-		return type(self)(getattr(self._mock, attr))
+		return type(self)(self.__child(attr))
+	
+	def __child(self, attr):
+		return self._mock._mock_get_child(attr, force=True)
 	
 	def __expect_call_on(self, obj):
 		matcher = MockMatcher(obj)
@@ -139,7 +142,7 @@ class MockWrapper(RealSetter):
 		self._mock._mock_reset()
 	
 	def child(self, val):
-		return mock(self._mock._mock_get_child(val))
+		return self.__wrapped_child(val)
 	method = child
 	
 	# convenience methods for dsl-like chaining
@@ -196,8 +199,9 @@ class MockWrapper(RealSetter):
 	def _with_children(self, *children, **kwchildren):
 		"""internally add children, but don't freeze the mock"""
 		for child in children:
-			getattr(self._mock, child)
+			self.__child(child)
 		for child, val in kwchildren.items():
+			self.__child(child) # force the child to be created
 			setattr(self._mock, child, val)
 		return self
 	

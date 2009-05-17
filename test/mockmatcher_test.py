@@ -150,6 +150,20 @@ class TestPySpec(TestCase):
 		self.assertTrue(expectation.describe().endswith('with arguments equal to: <#Matcher: any object>'), expectation.describe())
 		# now satisfy the expectation:
 		wrapper_.raw.a(123)
+		
+	def test_should_allow_expectations_on_special_methods(self):
+		wrapper_ = mock()
+		wrapper_.expects('__getitem__').with_(123).returning('result')
+		self.assertEqual(wrapper_.raw[123], 'result')
+	
+	def test_frozen_objects_can_still_be_extended_via_the_wrapper(self):
+		wrapper_ = mock().frozen()
+		self.assertRaises(AttributeError, lambda: wrapper_.raw.foo())
+		wrapper_.expects('foo').returning('result')
+		wrapper_.child('bar')
+		wrapper_.method('baz')
+		wrapper_.with_children('a', b=1)
+		self.assertEqual(wrapper_.raw.foo(), 'result')
 	
 	def test_should_return_arguments_for_a_subset_of_calls_given_conditions(self):
 		wrapper_ = mock()
