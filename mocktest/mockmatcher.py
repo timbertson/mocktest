@@ -198,7 +198,7 @@ class MockMatcher(object):
 				if not self._match_or_equal(expected, actual):
 					return False
 			
-			if not kwargs.keys() == k.keys():
+			if set(kwargs.keys()) != set(k.keys()):
 				return False
 				
 			for key in kwargs.keys():
