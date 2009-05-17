@@ -180,16 +180,31 @@ class MockMatcher(object):
 		operator_args = self._multiplicity[1:]
 		return operator(num_calls, *operator_args)
 	
+	def _match_or_equal(self, expected, actual):
+		if isinstance(expected, Matcher):
+			return expected.matches(actual)
+		return actual == expected
+		
 	def _args_equal_func(self, args, kwargs):
 		"""
 		returns a function that returns whether its arguments match the
 		args (tuple), and its keyword arguments match the kwargs (dict)
 		"""
 		def check(*a, **k):
-			# print "Comapring args:"
-			# print "%r      %r" % (a, k)
-			# print "%r      %r" % (args, kwargs)
-			return a == args and k == kwargs
+			if not len(a) == len(args) and len(k) == len(kwargs):
+				return False
+			
+			for expected, actual in zip(args, a):
+				if not self._match_or_equal(expected, actual):
+					return False
+			
+			if not kwargs.keys() == k.keys():
+				return False
+				
+			for key in kwargs.keys():
+				if not self._match_or_equal(kwargs[key], k[key]):
+					return False
+			return True
 		return check
 	
 	def _equals_or_matches(self, expected, actual):
@@ -217,7 +232,8 @@ class MockMatcher(object):
 		
 	# fluffy user-visible expectation descriptions
 	def describe(self):
-		desc = "%s calls" % (self._multiplicity_description,)
+		times = 'at least one' if self._multiplicity_description is None else self._multiplicity_description
+		desc = "%s calls" % (times,)
 		if self._cond_description is not None:
 			desc += " %s" % (self._cond_description)
 		return desc

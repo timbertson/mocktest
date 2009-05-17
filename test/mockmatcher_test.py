@@ -144,6 +144,13 @@ class TestPySpec(TestCase):
 		self.assertTrue(mock_.called.once().with_(any_string))
 		self.assertTrue(mock_.called.once().with_(object_with('foo')))
 	
+	def test_should_format_matchers_with_their_description(self):
+		wrapper_ = mock()
+		expectation = wrapper_.expects('a').with_(anything)
+		self.assertTrue(expectation.describe().endswith('with arguments equal to: <#Matcher: any object>'), expectation.describe())
+		# now satisfy the expectation:
+		wrapper_.raw.a(123)
+	
 	def test_should_return_arguments_for_a_subset_of_calls_given_conditions(self):
 		wrapper_ = mock()
 		mock_ = wrapper_.raw

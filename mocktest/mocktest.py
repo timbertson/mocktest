@@ -114,7 +114,7 @@ class TestCase(unittest.TestCase):
 
 	def assert_(self, expr, desc = None):
 		if desc is None:
-			desc = expr
+			desc = "expected (%r) to be True" % (expr,)
 		super(TestCase, self).assert_(expr, desc)
 	
 	assertTrue = assert_
