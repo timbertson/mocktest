@@ -199,7 +199,7 @@ class TestCase(unittest.TestCase):
 		 - match a regular expression on the resulting expression message (matching)
 		 - compare message strings (message)
 		"""
-		callsig = "%s()" % (callable.__name__,)
+		callsig = "%s()" % (func.__name__,)
 
 		try:
 			func()
@@ -231,7 +231,7 @@ class TestCase(unittest.TestCase):
 				"expected=%s, actual=%s"\
 				% (callsig, exception, exc_info[0]))
 		else:
-			self.fail("%s did not raise %s" % (callsig, exception))
+			self.fail("%s did not raise an exception" % (callsig,))
 	failUnlessRaises = assertRaises
 	
 	def run(self, result=None):

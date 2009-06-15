@@ -166,9 +166,9 @@ class SilentMock(RealSetter, SingletonClass):
 				pass
 		return self._mock_get_child(name)
 			
-
 	def __str__(self):
 		return str(self._mock_get('name'))
+	def __name__(self): return str(self)
 	
 	def __repr__(self):
 		return '<raw mock "%s">' % (str(self),)
