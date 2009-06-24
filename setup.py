@@ -4,7 +4,7 @@ from setuptools import *
 
 setup(
 	name='mocktest',
-	version='0.3.0',
+	version='0.3.1',
 	description='a mocking and expectation test library for python, inspired by rspec',
 	author='Tim Cuthbertson',
 	author_email='tim3d.junk+mocktest@gmail.com',
