@@ -228,8 +228,8 @@ class TestCase(unittest.TestCase):
 		except:
 			exc_info = sys.exc_info()
 			self.fail("%s raised an unexpected exception type: "\
-				"expected=%s, actual=%s"\
-				% (callsig, exception, exc_info[0]))
+				"expected=%s, actual=%s (%s)"\
+				% (callsig, exception, exc_info[0], exc_info[1]))
 		else:
 			self.fail("%s did not raise an exception" % (callsig,))
 	failUnlessRaises = assertRaises
