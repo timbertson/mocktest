@@ -124,7 +124,9 @@ class MockWrapper(RealSetter):
 	is_not_expected = property(__expect_none)
 
 	def expects(self, methodname):
-		return self.__expect_call_on(self.__wrapped_child(methodname))
+		return self.__wrapped_child(methodname).is_expected
+	def does_not_expect(self, methodname):
+		return self.__wrapped_child(methodname).is_not_expected
 
 	def __str__(self):
 		return 'mock wrapper for \"%s\"' %(self._get('name'))
