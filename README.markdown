@@ -1,3 +1,57 @@
+how about:
+
+# heirarchial mocking:
+when(obj).meth().then_return(foo)
+
+when(obj).meth.with(x,y,z).then_return(foo)
+
+replace(obj).property.with(some_stub)
+
+expect(obj).meth.with(fdsf).once()
+
+# direct mocking:
+# how about we just reserve mock_* and with_* for mocktest?
+# when() and expect() can still access the mock puppet, but nobody else?
+# mock_calls, 
+x = mock("foo")
+x = mock("foo").with(x=1,y=2)
+x = mock("foo").with_children(x=1,y=2)
+x = mock("foo").with_methods(x=1,y=2)
+x = mock("foo").with_spec(bob)
+
+when(x).meth.then_return(fdjsafj)
+expect(x).meth.once
+
+x.mock_calls.should == [1,2,3]
+s.mock_return = ___
+s.mock_freeze()
+s.mock_unfreeze()
+
+when(obj)().then_return(foo) # possible with the below as well? probably not...
+when(obj).__call__.then_return(result)
+
+
+raw mocks go away... a mock() call will yield a combination raw mock that has with_* and mock_* methods, and can be puppeted via when(), expect(), replace(), etc...
+
+
+
+
+##
+
+
+#test inheritance
+
+
+inherit setup/teardown (but no test methods) from another class:
+
+class MyTest(TestCase.skeleton): pass
+
+class MyTest(skeleton(TestCase)): pass
+
+
+
+
+
 ## mocktest (version 0.3)
 ... is a powerful and easy-to-use mocking library, inspired by rspec and
 similar in many ways to Michael Foord's popular Mock module.

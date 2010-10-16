@@ -19,8 +19,11 @@ from mockwrapper import MockWrapper
 from silentmock import SilentMock, raw_mock
 from lib import singletonclass
 
-def mock_on(parent, quiet = False):
+def when(parent, quiet = False):
 	return MockAnchor(parent, quiet)
+
+def expect(parent):
+	return ExpectedMockAnchor(parent)
 
 def _special_method(name):
 	return name.startswith('__') and name.endswith('__')
@@ -198,3 +201,18 @@ class MockAnchor(RealSetter):
 	
 	def expects(self, methodname):
 		return getattr(self, methodname).is_expected
+
+class ExpectedMockAnchor(MockAnchor):
+	def _make_mock_if_required(self, *a, **kw):
+		ret = super(type(self), self)._make_mock_if_required(*a, **kw)
+		ret.expect()
+
+
+
+class MockExpression(object):
+	def __init__(self):
+		self.expected
+
+	def expected_at_least(self, num):
+		self.expected_count = lambda x: x
+

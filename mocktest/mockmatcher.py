@@ -1,40 +1,181 @@
 from matchers import Matcher
-from callrecord import CallRecord
 __unittest = True
 
-def _proxy_and_return_self(function):
-	def call_delegate(self, *a, **k):
-		getattr(self._mock_wrapper, function.__name__)(*a, **k)
-		return self
-	return call_delegate
+class MockTransaction(object):
+	teardown_actions = None
+	@classmethod
+	def add_teardown(cls, func):
+		cls.teardown_actions.append(func)
+	
+	@classmethod
+	def __enter__(cls):
+		assert cls.teardown_actions is None
+		cls.teardown_actions = []
 
-class MockMatcher(object):
+	@classmethod
+	def __exit__(cls):
+		try:
+			for action in reversed(cls.teardown_actions):
+				action()
+		finally:
+			cls.teardown_actions = None
+		return False
+
+def when(obj):
+	return GetWrapper(lambda name: mock_when(obj, name))
+
+def expect(obj):
+	return GetWrapper(lambda name: mock_expect(obj, name))
+
+def replace(obj):
+	return AssignmentWrapper(lambda name, val: replace_attr(obj, name, val))
+
+def replace_attr(obj, name, val):
+	try:
+		old_attr = getattr(obj, name)
+		def reset():
+			setattr(obj, name, old_attr)
+		MockTransaction.add_teardown(reset)
+	except AttributeError:
+		pass
+	setattr(obj, name, val)
+
+
+def mock_when(obj, name):
+	stub_method(obj, name)._new_act()
+
+def mock_expect(obj, name):
+	stub_method(obj, name)._new_act().at_least(1).times()
+
+class AssignmentWrapper(object):
+	def __init__(self, callback):
+		self.__callback = callback
+		self.__used = False
+
+	def __setattr__(self, name, val):
+		if self.__used: raise RuntimeError("already used!")
+		self.__used = True
+		return self.__callback(name, val)
+
+class GetWrapper(object):
+	def __init__(self, callback):
+		self.__callback = callback
+		self.__used = False
+
+	def __getattr__(self, name):
+		if self.__used: raise RuntimeError("already used!")
+		self.__used = True
+		return self.__callback(name)
+
+class Object(object):
+	def __init__(self, name="unnamed object"):
+		self.__name = name
+	def __repr__(self): return "<#%s: %s>" % (type(self).__name__, self.__name)
+	def __str__(self): return self.__name
+
+class RecursiveStub(Object):
+	def __getattr__(self, name):
+		obj = RecursiveStub(name=name)
+		setattr(self, name, obj)
+		return obj
+
+class Call(object):
+	@classmethod
+	def like(cls, *a, **kw):
+		return cls(a, kw)
+
+	def __init__(self, args, kwargs):
+		self.args = args
+		self.kwargs = kwargs
+	
+	def play(self, function):
+		return function(*self.args, **self.kwargs)
+
+def stub_method(obj, name):
+	try:
+		old_attr = getattr(obj, name)
+		if isinstance(old_attr, StubbedMethod):
+			return old_attr
+		def reset():
+			setattr(obj, name, old_attr)
+		MockTransaction.add_teardown(reset)
+	except AttributeError:
+		pass
+	new_attr = StubbedMethod(name)
+	setattr(obj, name, new_attr)
+	return new_attr
+
+
+class StubbedMethod(object):
+	def __init__(self, name):
+		self.acts = []
+		self.name = name
+		self.calls = []
+		MockTransaction.add_teardown(self._verify)
+	
+	def _new_act(self):
+		act = MockAct()
+		self.acts.append(act)
+		return act
+	
+	def __call__(self, *a, **kw):
+		call = Call(a, kw)
+		self.calls.append(call)
+		for act in self.acts:
+			if act._matches(call):
+				act.act_upon(call)
+				break
+		else:
+			raise TypeError("no matching actions found for arguments: %r" % (call,))
+
+	def _verify(self):
+		for act in self.acts:
+			if not act._satisfied_by(self.calls):
+				raise AssertionError(act.summary(False))
+
+class MockAct(object):
 	_multiplicity = None
 	_multiplicity_description = None
 	
 	_cond_args = None
 	_cond_description = None
+
+	_action = None
+
+	def __init__(self, target):
+		target._mock_acts
 	
-	def _call_list(self):
-		return self._mock._mock_get('call_list')
-	call_list = property(_call_list)
-	
-	def __init__(self, mock_wrapper):
-		self._mock = mock_wrapper.raw
-		self._mock_wrapper = mock_wrapper
-	
-	def with_args(self, *args, **kwargs):
+	def __call__(self, *args, **kwargs):
 		"""
 		restrict the checked set of function calls to those with
 		arguments equal to (args, kwargs)
 		"""
 		self.__assert_not_set(self._cond_args, "argument condition")
 		self._cond_args = self._args_equal_func(args, kwargs)
-		self._cond_description = "with arguments equal to: %s" % (CallRecord(args, kwargs, stack=False),)
+		self._cond_description = "with arguments equal to: %s" % (Call(args, kwargs),)
 		return self
-	with_ = with_args
+
+	def _matches(self, call):
+		if self._cond_args is None:
+			return True
+		try:
+			return call.play(self._cond_args)
+		except TypeError:
+			return False
+		return True
 	
-	def where_args(self, func):
+	def _satisfied_by(self, calls):
+		if self._multiplicity is None:
+			return True
+		matched_calls = filter(self._matches, calls)
+		return self._multiplicity(len(matched_calls))
+
+	def _act_upon(self, call):
+		if self._action is None:
+			return None
+		return call.play(self._action)
+	
+	def where(self, func):
 		"""
 		restrict the checked set of function calls to those where
 		func(*args, **kwargs) is True
@@ -43,63 +184,30 @@ class MockMatcher(object):
 		self._cond_args = func
 		self._cond_description = "where arguments satisfy the supplied function: %r" % (func,)
 		return self
-	where_ = where_args
 
 	def exactly(self, n):
 		"""set the allowed number of calls made to this function"""
-		self.__assert_not_set(self._multiplicity, "number of calls")
-		self._multiplicity = (self._eq, n)
+		self._multiplicity = lambda x: x == n
 		self._multiplicity_description = "exactly %s" % (n,)
 		return self
 	
 	def at_least(self, n):
 		"""set the allowed number of calls made to this function"""
-		self.__assert_not_set(self._multiplicity, "number of calls")
-		self._multiplicity = (self._gte, n)
+		self._multiplicity = lambda x: x >= n
 		self._multiplicity_description = "at least %s" % (n,)
 		return self
 	
 	def at_most(self, n):
 		"""set the allowed number of calls made to this function"""
-		self.__assert_not_set(self._multiplicity, "number of calls")
-		self._multiplicity = (self._lte, n)
+		self._multiplicity = lambda x: x <= n
 		self._multiplicity_description = "at most %s" % (n,)
 		return self
 	
 	def between(self, start_range, end_range):
 		"""set the allowed number of calls made to this function"""
-		self.__assert_not_set(self._multiplicity, "number of calls")
-		self._multiplicity = (self._btwn, start_range, end_range)
+		self._multiplicity = lambda x: x >= start_range and x <= end_range
 		self._multiplicity_description = "between %s and %s" % (start_range, end_range)
 		return self
-
-	def get_calls(self):
-		"""
-		return all the function calls this matcher applies to in the format:
-		  [ ((call1_arg1, call1_arg2), {'call_1_key':'value_1'}), ... ]
-		Note that empty args or kwargs are replaced with None, i.e:
-		  [ (None, {'key':'value'}), ... ]
-		
-		If the conditions on this matcher are not satisfied, returns None
-		"""
-		if not self._matches():
-			raise AssertionError, self
-		return filter(self._args_match, self.call_list)
-	
-	def get_args(self):
-		"""
-		returns the arguments this function was called with.
-		this is an alias for:
-		  get_calls()[0]
-		except it will fail if the expected number of times for this
-		function to be called is not exactly one
-		"""
-		
-		if self._multiplicity != (self._eq, 1):
-			raise ValueError, "get_args() can only be used when you are expecting exactly one call"
-		
-		calls = self.get_calls()
-		return calls[0]
 
 	# syntactic sugar to make more readabale expressions
 	def __noop(self): return self
@@ -136,55 +244,6 @@ class MockMatcher(object):
 		if var is not None:
 			raise ValueError, "%s has already been set" % (msg,)
 	
-	# evaluating matches
-	def _matches(self):
-		"""
-		returns a boolean of whether this matcher is satisfied,
-		given the multiplicities and argument checks it has been
-		configured with
-		"""
-		call_list = self.call_list
-		if self._cond_args is not None:
-			call_list = filter(self._args_match, call_list)
-		return self._multiplicities_match(len(call_list))
-	
-	def _args_match(self, call_args):
-		"""
-		return true if the given call_args matches this matcher's
-		argument check condition
-		  
-		call_args = (args, kwargs)
-		  e.g: call_args = ((arg1, arg2), {'key1':'value'})
-		"""
-		# print "args match for a single call? given arguments are"
-		# print "args: %r" % (call_args[0],)
-		if self._cond_args is None:
-			return True
-		
-		args, kwargs = call_args.raw_tuple
-		return self._cond_args(*args, **kwargs)
-	
-	def _multiplicities_match(self, num_calls):
-		"""
-		returns whether the *actual* number of calls (num_calls) this
-		function has received satisfies the (function, arg1, ...) tuple
-		stored in self._multipicity
-		
-		i.e returns function(num_calls, arg1, ... )
-		"""
-		
-		if self._multiplicity is None:
-			# default operation
-			self.at_least(1).times
-		operator = self._multiplicity[0]
-		operator_args = self._multiplicity[1:]
-		return operator(num_calls, *operator_args)
-	
-	def _match_or_equal(self, expected, actual):
-		if isinstance(expected, Matcher):
-			return expected.matches(actual)
-		return actual == expected
-		
 	def _args_equal_func(self, args, kwargs):
 		"""
 		returns a function that returns whether its arguments match the
@@ -212,23 +271,15 @@ class MockMatcher(object):
 			return expected.matches(actual)
 		return expected == actual
 
-	# multiplicity-checking operators
-	def _eq(self, a, b):
-		return a == b
-	def _lte(self, a, b):
-		return a <= b
-	def _gte(self, a, b):
-		return a >= b
-	def _btwn(self, a, b, c):
-		ends = (b,c)
-		return a >= min(ends) and a <= max(ends)
-	
-	def __repr__(self):
+	def summary(self, matched=None):
 		return "Mock \"%s\" %s expectations:\n expected %s\n received %s" % (
 			self._mock,
-			"matched" if self._matches() else "did not match",
+			"has not yet checked" if matched is None else ("matched" if matched else "did not match"),
 			self.describe(),
 			self.describe_reality())
+
+	def __repr__(self):
+		return self.summary()
 		
 	# fluffy user-visible expectation descriptions
 	def describe(self):
@@ -249,16 +300,21 @@ class MockMatcher(object):
 				desc += "\n  %s:   %s" % (i, arg_set)
 				i += 1
 		return desc
-	
-	# proxy back and forth between mock wrapper:
-	# once you call is_expected or called on a mock wrapper, you can no
-	# longer specify wrapper behaviour (like returning(), etc)) without this:
-	@_proxy_and_return_self
-	def returning(): pass
-	
-	@_proxy_and_return_self
-	def raising(): pass
 
-	@_proxy_and_return_self
-	def with_action(): pass
+	def and_return(self, val):
+		self._action = lambda *a, **k: val
+		return self
+	then_return = and_return
+	returning = and_return
+	
+	def and_call(self, func):
+		self._action = func
+		return self
+	then_call = and_call
+	calling = and_call
 
+	def and_raise(self, exc):
+		def _do_raise(*a, **kw):
+			raise exc
+		self._action = _do_raise
+		return self

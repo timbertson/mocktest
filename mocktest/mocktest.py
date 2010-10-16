@@ -14,12 +14,12 @@ __all__ = (
 	'TestCase',
 	'pending',
 	'ignore',
+	'Skeleton',
 )
 
 import unittest
 import re
 import sys
-import os
 import core
 
 __unittest = True
@@ -30,6 +30,15 @@ try:
 except ImportError:
 	SkipTest = None
 	
+
+def Skeleton(cls):
+	methods = {}
+	for method in ('setUp', 'tearDown'):
+		try:
+			methods[method] = getattr(cls, method)
+		except AttributeError: pass
+	new_cls = type("skeleton of %s" % (cls.__name__,), (), methods)
+	return new_cls
 
 def _compose(hook, func):
 	if hook is None:
@@ -91,7 +100,7 @@ def ignore(function, reason = None):
 
 class TestCase(unittest.TestCase):
 	pending = globals()['pending']
-	pending = globals()['ignore']
+	ignore = globals()['ignore']
 	def __init__(self, methodName = 'runTest'):
 		super(TestCase, self).__init__(methodName)
 		try:
