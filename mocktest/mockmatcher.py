@@ -133,6 +133,16 @@ class StubbedMethod(object):
 			if not act._satisfied_by(self.calls):
 				raise AssertionError(act.summary(False))
 
+class NoopDelegator(object):
+	def __init__(self, delegate):
+		self._delegate = delegate
+
+	def __call__(self):
+		return self._delegate
+
+	def __getattr__(self, attr):
+		return getattr(self._delegate, attr)
+
 class MockAct(object):
 	_multiplicity = None
 	_multiplicity_description = None
@@ -144,6 +154,7 @@ class MockAct(object):
 
 	def __init__(self, target):
 		target._mock_acts
+		self.time = self.times = NoopDelegator(self)
 	
 	def __call__(self, *args, **kwargs):
 		"""

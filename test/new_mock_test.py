@@ -273,10 +273,10 @@ class TestSkeletons(TestCase):
 				assert self.x == 1
 				assert hasattr(self, 'tearDown')
 		
-		suite = unittest.TestSuite(tests=(SecondTestCase(),))
+		suite = unittest.makeSuite(SecondTestCase)
 		result = unittest.TestResult()
 		suite.run(result)
 		assert result.testsRun == 1
-		assert result.wasSuccessful()
+		assert result.wasSuccessful(), result.errors[0][1]
 
 

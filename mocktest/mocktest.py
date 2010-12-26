@@ -21,8 +21,9 @@ import unittest
 import re
 import sys
 import core
+import types
 
-__unittest = True
+#__unittest = True
 
 # set the SkipTest exception class
 try:
@@ -31,14 +32,28 @@ except ImportError:
 	SkipTest = None
 	
 
+def subclass_only(parent, method_names, safe_superclasses=()):
+	def filter_parent_class(cls):
+		if cls in safe_superclasses:
+			return cls
+		return subclass_only(cls, method_names, safe_superclasses)
+
+	filtered_parents = tuple(map(filter_parent_class, parent.__bases__))
+	cls = type("%s::Skeleton" % (parent.__name__,), filtered_parents, {})
+
+	safe_attr = lambda name: name in method_names or name.startswith('_')
+
+	for method_name in filter(safe_attr, parent.__dict__):
+		method = getattr(parent, method_name)
+		# make an instancemethod ied to the new class, instead of the old
+		if isinstance(method, types.MethodType):
+			copied_method = types.MethodType(method.im_func, None, cls)
+			setattr(cls, method_name, copied_method)
+	return cls
+
 def Skeleton(cls):
-	methods = {}
-	for method in ('setUp', 'tearDown'):
-		try:
-			methods[method] = getattr(cls, method)
-		except AttributeError: pass
-	new_cls = type("skeleton of %s" % (cls.__name__,), (), methods)
-	return new_cls
+	import mocktest
+	return subclass_only(cls, ('setUp', 'tearDown'), safe_superclasses=(unittest.TestCase, object, mocktest.TestCase))
 
 def _compose(hook, func):
 	if hook is None:
