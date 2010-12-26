@@ -1,6 +1,7 @@
 from mocktest import *
 from unittest import TestCase
 import unittest
+from functools import wraps
 
 def run_func(self, func):
 	from mocktest import TestCase as MockTestCase
@@ -14,6 +15,7 @@ def run_func(self, func):
 	return result
 
 def passing(func):
+	@wraps(func)
 	def _run_test(self):
 		result = run_func(self, func)
 		assert result.wasSuccessful(), (result.failures + result.errors)[0][1]
@@ -21,9 +23,10 @@ def passing(func):
 	return _run_test
 
 def failing(func):
+	@wraps(func)
 	def _run_test(self):
 		result = run_func(self, func)
-		assert not result.wasSuccessful(), "test succeeded!"
+		assert not result.wasSuccessful(), "test unexpectedly succeeded!"
 	_run_test.__name__ == func.__name__
 	return _run_test
 
@@ -33,11 +36,11 @@ obj = Object()
 class TestMockingCalls(TestCase):
 	@passing
 	def test_return_values(self):
-		when(obj).meth().then_return('foo')
-		assert obj.meth() == 'foo'
+		when(obj).meth.then_return('foo')
+		assert obj.meth() == 'foo', repr(obj.meth())
 		when(obj).meth(1,2,3).then_return('123')
 		assert obj.meth(1,2,3) == '123'
-		assert obj.meth(3, 2, 1) == None
+		assert obj.meth(3, 2, 1) == 'foo'
 		self.assertRaises(AttributeError, lambda: obj.meth2)
 	
 	@passing
@@ -55,14 +58,14 @@ class TestMockingCalls(TestCase):
 	
 	@passing
 	def test_mocking_class_methods(self):
-		when(Object).foo(Any(Object)).then_return(True)
-		assert obj.foo() == True
+		when(Object).foo().then_return(True)
+		assert obj.foo() == True, repr(obj.foo())
 
 	@passing
 	def test_delegating_action(self):
-		when(obj).__repr__.then_reutrn('repr')
-		when(obj).foo(1).then_call(lambda self, i: repr(self) + " proxied!")
-		assert obj.foo(1) == "repr proxied!"
+		when(obj).repr.then_return('repr')
+		when(obj).foo(1).then_call(lambda i: "%s proxied! %s" % (obj.repr(), i))
+		assert obj.foo(1) == "repr proxied! 1"
 	
 	@passing
 	def test_replacing_properties(self):
@@ -72,13 +75,15 @@ class TestMockingCalls(TestCase):
 		replace(obj).grand.child = True
 		assert obj.foo == 'replaced'
 		assert obj.grand.child
-		self._teardown()
-		self._setup()
-		assert obj.foo == 'original'
+		core._teardown()
+		core._setup()
+		assert obj.foo == 'original', obj.foo
 		self.assertRaises(AttributeError, lambda: obj.grand)
+
 
 class TestMockingSpecialMethods(TestCase):
 	@passing
+	@pending
 	def test_mocking_call(self):
 		self.assertRaises(TypeError, lambda: obj())
 		when(obj)(2).then_return('two')
@@ -87,30 +92,31 @@ class TestMockingSpecialMethods(TestCase):
 		assert obj(3) == 'three'
 	
 	@passing
+	@pending
 	def test_mocking_length(self):
 		when(obj).__len__().then_return(2)
 		assert len(obj) == 2
 	
 	@passing
-	def test_mocking_special_methods_on_calss_directly(self):
-		when(Obj).__len__.then_return(5)
+	def test_mocking_special_methods_on_class_directly(self):
+		when(Object).__len__.then_return(5)
 		assert len(obj) == 5
 	
 	
 class TestExpectations(TestCase):
 	@passing
-	def test_receiveing_call_once(self):
+	def test_receiving_call_once(self):
 		expect(obj).meth.once()
 		obj.meth()
 
 	@failing
-	def test_receiveing_call_too_many_times(self):
+	def test_receiving_call_too_many_times(self):
 		expect(obj).meth.once()
 		obj.meth()
 		obj.meth()
 
 	@failing
-	def test_receiveing_call_not_enough_times(self):
+	def test_receiving_call_not_enough_times(self):
 		expect(obj).meth.exactly(4).times()
 		obj.meth()
 		obj.meth()
@@ -276,7 +282,7 @@ class TestSkeletons(TestCase):
 		suite = unittest.makeSuite(SecondTestCase)
 		result = unittest.TestResult()
 		suite.run(result)
-		assert result.testsRun == 1
+		assert result.testsRun == 1, repr(result)
 		assert result.wasSuccessful(), result.errors[0][1]
 
 

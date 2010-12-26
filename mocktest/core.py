@@ -8,3 +8,5 @@
 __unittest = True
 
 from mockmatcher import *
+_setup = MockTransaction.__enter__
+_teardown = MockTransaction.__exit__

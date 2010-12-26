@@ -13,7 +13,7 @@ class MockTransaction(object):
 		cls.teardown_actions = []
 
 	@classmethod
-	def __exit__(cls):
+	def __exit__(cls, *optional_err_info):
 		try:
 			for action in reversed(cls.teardown_actions):
 				action()
@@ -27,46 +27,74 @@ def when(obj):
 def expect(obj):
 	return GetWrapper(lambda name: mock_expect(obj, name))
 
-def replace(obj):
-	return AssignmentWrapper(lambda name, val: replace_attr(obj, name, val))
+def stub(obj):
+	return GetWrapper(lambda name: mock_stub(obj, name))
 
-def replace_attr(obj, name, val):
-	try:
-		old_attr = getattr(obj, name)
-		def reset():
-			setattr(obj, name, old_attr)
+
+def replace(obj):
+	replacements = []
+	def replace_(name, val):
+		replace_attr(obj, name, val, generate_reset=len(replacements)==0)
+		replacements.append(name)
+	return RecursiveAssignmentWrapper(replace_)
+
+def replace_attr(obj, name, val, generate_reset=True):
+	if generate_reset:
+		try:
+			old_attr = getattr(obj, name)
+			reset = lambda: setattr(obj, name, old_attr)
+		except AttributeError:
+			reset = lambda: delattr(obj, name)
 		MockTransaction.add_teardown(reset)
-	except AttributeError:
-		pass
 	setattr(obj, name, val)
+	return val
 
 
 def mock_when(obj, name):
-	stub_method(obj, name)._new_act()
+	return stub_method(obj, name)._new_act(name)
+
+def mock_stub(obj, name):
+	return stub_method(obj, name)._new_act(name).at_least(0).times()
 
 def mock_expect(obj, name):
-	stub_method(obj, name)._new_act().at_least(1).times()
+	return stub_method(obj, name)._new_act(name).at_least(1).times()
 
-class AssignmentWrapper(object):
+def _special_method(name):
+	return name.startswith('__') and name.endswith('__')
+
+from lib.realsetter import RealSetter
+class RecursiveAssignmentWrapper(RealSetter):
+	_used = None
 	def __init__(self, callback):
-		self.__callback = callback
-		self.__used = False
+		self._real_set(_callback=callback)
+		self._real_set(_used=False)
+
+	def _use(self):
+		if self._used: raise RuntimeError("already used!")
+		self._real_set(_used=True)
 
 	def __setattr__(self, name, val):
-		if self.__used: raise RuntimeError("already used!")
-		self.__used = True
-		return self.__callback(name, val)
+		self._use()
+		self._real_set(**{name:val})
+		return self._callback(name, val)
+
+	def __getattr__(self, name):
+		if name in self.__dict__:
+			return self._real_get(name)
+		val = RecursiveAssignmentWrapper(self._callback)
+		setattr(self, name, val)
+		return val
 
 class GetWrapper(object):
 	def __init__(self, callback):
-		self.__callback = callback
-		self.__used = False
+		self._callback = callback
+		self._used = False
 
 	def __getattr__(self, name):
-		if self.__used: raise RuntimeError("already used!")
-		self.__used = True
-		return self.__callback(name)
-
+		if self._used: raise RuntimeError("already used!")
+		self._used = True
+		return self._callback(name)
+	
 class Object(object):
 	def __init__(self, name="unnamed object"):
 		self.__name = name
@@ -87,6 +115,13 @@ class Call(object):
 	def __init__(self, args, kwargs):
 		self.args = args
 		self.kwargs = kwargs
+	
+	def __str__(self):
+		if self.kwargs:
+			kwargs = ", " + ", ".join(["%s=%r" % (k,v) for k,v in self.kwargs.items()])
+		else:
+			kwargs = ''
+		return "(%s%s)" % (", ".join(map(repr, self.args)), kwargs)
 	
 	def play(self, function):
 		return function(*self.args, **self.kwargs)
@@ -113,25 +148,24 @@ class StubbedMethod(object):
 		self.calls = []
 		MockTransaction.add_teardown(self._verify)
 	
-	def _new_act(self):
-		act = MockAct()
+	def _new_act(self, name):
+		act = MockAct(name)
 		self.acts.append(act)
 		return act
 	
 	def __call__(self, *a, **kw):
 		call = Call(a, kw)
 		self.calls.append(call)
-		for act in self.acts:
+		for act in reversed(self.acts):
 			if act._matches(call):
-				act.act_upon(call)
-				break
+				return act._act_upon(call)
 		else:
-			raise TypeError("no matching actions found for arguments: %r" % (call,))
+			raise TypeError("no matching actions found for arguments: %s" % (call,))
 
 	def _verify(self):
 		for act in self.acts:
 			if not act._satisfied_by(self.calls):
-				raise AssertionError(act.summary(False))
+				raise AssertionError(act.summary(False, self.calls))
 
 class NoopDelegator(object):
 	def __init__(self, delegate):
@@ -152,9 +186,9 @@ class MockAct(object):
 
 	_action = None
 
-	def __init__(self, target):
-		target._mock_acts
+	def __init__(self, name):
 		self.time = self.times = NoopDelegator(self)
+		self._name = name
 	
 	def __call__(self, *args, **kwargs):
 		"""
@@ -219,13 +253,8 @@ class MockAct(object):
 		self._multiplicity = lambda x: x >= start_range and x <= end_range
 		self._multiplicity_description = "between %s and %s" % (start_range, end_range)
 		return self
-
-	# syntactic sugar to make more readabale expressions
-	def __noop(self): return self
-	times = property(__noop)
-	time = property(__noop)
 	
-	def no_times(self):
+	def never(self):
 		"""alias for exactly(0).times"""
 		return self.exactly(0)
 		
@@ -254,7 +283,12 @@ class MockAct(object):
 	def __assert_not_set(self, var, msg="this value"):
 		if var is not None:
 			raise ValueError, "%s has already been set" % (msg,)
-	
+
+	def _match_or_equal(self, expected, actual):
+		if isinstance(expected, Matcher):
+			return expected.matches(actual)
+		return actual == expected
+
 	def _args_equal_func(self, args, kwargs):
 		"""
 		returns a function that returns whether its arguments match the
@@ -282,12 +316,12 @@ class MockAct(object):
 			return expected.matches(actual)
 		return expected == actual
 
-	def summary(self, matched=None):
-		return "Mock \"%s\" %s expectations:\n expected %s\n received %s" % (
-			self._mock,
+	def summary(self, matched=None, call_list=None):
+		return "Mock \"%s\" %s expectations:\n expected %s\n %s" % (
+			self._name,
 			"has not yet checked" if matched is None else ("matched" if matched else "did not match"),
 			self.describe(),
-			self.describe_reality())
+			'' if call_list is None else "received " + self.describe_reality(call_list))
 
 	def __repr__(self):
 		return self.summary()
@@ -300,8 +334,7 @@ class MockAct(object):
 			desc += " %s" % (self._cond_description)
 		return desc
 	
-	def describe_reality(self):
-		call_list = self.call_list
+	def describe_reality(self, call_list):
 		call_count = len(call_list)
 		desc = "%s calls" % (call_count,)
 		if call_count > 0:

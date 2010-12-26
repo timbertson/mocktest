@@ -21,7 +21,9 @@ import unittest
 import re
 import sys
 import core
+from mockmatcher import _special_method
 import types
+from functools import wraps
 
 #__unittest = True
 
@@ -41,14 +43,19 @@ def subclass_only(parent, method_names, safe_superclasses=()):
 	filtered_parents = tuple(map(filter_parent_class, parent.__bases__))
 	cls = type("%s::Skeleton" % (parent.__name__,), filtered_parents, {})
 
-	safe_attr = lambda name: name in method_names or name.startswith('_')
+	safe_method = lambda name: name in method_names or name.startswith('_')
 
-	for method_name in filter(safe_attr, parent.__dict__):
-		method = getattr(parent, method_name)
-		# make an instancemethod ied to the new class, instead of the old
-		if isinstance(method, types.MethodType):
-			copied_method = types.MethodType(method.im_func, None, cls)
-			setattr(cls, method_name, copied_method)
+	def copy_attr(name):
+		attr = getattr(parent, name)
+		if _special_method(name): return
+		if isinstance(attr, types.MethodType):
+			if not safe_method(name):
+				return
+			# make a copy of the method that's tied to the destination class instead of the source
+			attr = types.MethodType(attr.im_func, None, cls)
+		setattr(cls, name, attr)
+
+	map(copy_attr, dir(parent))
 	return cls
 
 def Skeleton(cls):
@@ -86,31 +93,29 @@ class ParamDecorator(object):
 @ParamDecorator
 def pending(function, reason = None):
 	reason_str = "" if reason is None else " (%s)" % reason
+	@wraps(function)
 	def actually_call_it(*args, **kwargs):
 		fn_name = function.__name__
 		success = False
 		try:
 			function(*args, **kwargs)
 			success = True
-			print >> sys.stderr, "%s%s PASSED unexpectedly " % (fn_name, reason_str),
-			print "%s%s PASSED unexpectedly " % (fn_name, reason_str),
 		except StandardError:
-			print >> sys.stderr, "[[[ PENDING ]]]%s ... " % (reason_str,)
-			print "[[[ PENDING ]]]%s ... " % (reason_str,)
+			if reason_str:
+				print >> sys.stderr, "[[[ PENDING ]]]%s ... " % (reason_str,)
 			if SkipTest is not None:
 				raise SkipTest(reason_str)
 		if success:
 			raise AssertionError, "%s%s PASSED unexpectedly " % (fn_name, reason_str)
-	actually_call_it.__name__ = function.__name__
 	return actually_call_it
 
 @ParamDecorator
 def ignore(function, reason = None):
 	reason_str = "" if reason is None else " (%s)" % reason
+	@wraps(function)
 	def actually_call_it(*args, **kwargs):
 		print >> sys.stderr, "[[[ IGNORED ]]]%s ... " % (reason_str,)
 		print "[[[ IGNORED ]]]%s ... " % (reason_str,)
-	actually_call_it.__name__ = function.__name__
 	return actually_call_it
 
 class TestCase(unittest.TestCase):

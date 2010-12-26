@@ -1,7 +1,7 @@
-__all__ = ['Matcher', 'anything', 'not_']
+__all__ = ['Matcher', 'Any', 'Not']
 
 class Matcher(object):
-	_desc = 'anonymous matcher'
+	_desc = 'unnamed matcher'
 
 	def desc(self):
 		return self._desc
@@ -27,6 +27,19 @@ class NegatedMatcher(Matcher):
 def matcher(matches, desc = 'anonymous matcher'):
 	return type('Matcher', (Matcher,), {'matches':matches, 'desc': lambda self: desc})()
 
-anything = matcher(lambda self, other: True, 'any object')
-not_ = NegatedMatcher
+class Any(Matcher):
+	def __init__(self, cls=None):
+		self._cls = cls
+
+	def matches(self, other):
+		if self._cls is not None:
+			return isinstance(other, self._cls)
+		return True
+
+	def desc(self):
+		if self._cls is None:
+			return "any object"
+		return "any instance of %r" % (self._cls,)
+
+Not = NegatedMatcher
 
