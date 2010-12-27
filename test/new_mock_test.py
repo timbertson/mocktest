@@ -54,7 +54,7 @@ class TestMockingCalls(TestCase):
 			assert obj.meth1() == 1
 			stub(obj).meth2.and_return(2)
 			assert obj.meth2() == 2
-			replace(obj).attr = 3
+			modify(obj).attr = 3
 			assert obj.attr == 3
 		self.assertEquals(_dir(object), [])
 	
@@ -86,8 +86,8 @@ class TestMockingCalls(TestCase):
 	def test_replacing_properties(self):
 		obj = Object()
 		obj.foo = 'original'
-		replace(obj).foo = 'replaced'
-		replace(obj).grand.child = True
+		modify(obj).foo = 'replaced'
+		modify(obj).grand.child = True
 		assert obj.foo == 'replaced'
 		assert obj.grand.child
 		core._teardown()
@@ -262,14 +262,16 @@ class TestMatchers(TestCase):
 class TestMockCreation(TestCase):
 	@passing
 	def test_creation_methods_kwargs(self):
-		obj = mock('foo').with_methods(x=1, y=2)
+		obj = mock('foo')
+		modify(obj).methods(x=1, y=2)
 		assert obj.x() == 1
 		assert obj.x(1,2,3) == 1
-		assert obj.y() == 2
+		assert obj.y() == 2, obj.y()
 
 	@passing
 	def test_creation_children_kwargs(self):
-		obj = mock('foo').with_children(x=1, y=2)
+		obj = mock('foo')
+		modify(obj).children(x=1, y=2)
 		assert obj.x == 1
 		assert obj.y == 2
 	
@@ -284,13 +286,13 @@ class TestMockCreation(TestCase):
 				raise RuntimeError("shouldn't actually be called!")
 
 		base = Base()
-		obj = mock('foo').copying(base).with_children(x=1)
+		obj = mock('foo', create_on_access=False)
+		modify(obj).copying(base).children(x=1)
 		assert obj.three_args(1,2,3) == None
 		assert obj._private() == None
 		assert obj() == None
 		assert obj.x == 1
-		self.assertRaises(TypeError, lambda: obj.three_args())
-		self.assertRaises(TypeError, lambda: obj.no_such_method())
+		self.assertRaises(AttributeError, lambda: obj.no_such_method())
 	
 	@passing
 	def test_responses_should_use_most_recently_added_first(self):
@@ -302,17 +304,15 @@ class TestMockCreation(TestCase):
 
 class CallInspection(TestCase):
 	@passing
-	@pending("not sure how recursive stubs are to work yet")
 	def test_inspect_calls(self):
 		obj = mock('foo')
 		obj.a()
+		obj.a(1)
 		obj.b(1,2,3)
 		obj.c(1,2,3,x=1)
-		assert obj.stubbed_calls == [
-			('a', (), {}),
-			('b', (1,2,3), {}),
-			('c', (1,2,3), {'x':1}),
-		]
+		self.assertEquals(obj.a.received_calls, [Call.like(), Call.like(1)])
+		self.assertEquals(obj.b.received_calls, [Call.like(1,2,3)])
+		self.assertEquals(obj.c.received_calls, [((1,2,3), {'x':1})])
 
 class TestSkeletons(TestCase):
 	def test_inheriting_setup_teardown(self):

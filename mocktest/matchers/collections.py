@@ -12,9 +12,6 @@ class IncludeMatcher(Matcher):
 		self.items = items
 	
 	def matches(self, other):
-		print '--'
-		print other
-		print repr(self.items)
 		return all([item in other for item in self.items])
 	
 	def desc(self):

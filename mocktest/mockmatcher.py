@@ -37,10 +37,10 @@ def expect(obj):
 def stub(obj):
 	return GetWrapper(lambda name: mock_stub(obj, name))
 
-def mock(name):
-	return RecursiveStub(name)
+def mock(name, create_on_access=True):
+	return RecursiveStub(name, create_on_access)
 
-def replace(obj):
+def modify(obj):
 	replacements = []
 	def replace_(name, val):
 		replace_attr(obj, name, val, generate_reset=len(replacements)==0)
@@ -77,17 +77,28 @@ def _special_method(name):
 
 from lib.realsetter import RealSetter
 class RecursiveAssignmentWrapper(RealSetter):
-	_used = None
 	def __init__(self, callback):
 		self._real_set(_callback=callback)
-		self._real_set(_used=False)
+	
+	def children(self, **children):
+		[setattr(self, k, v) for k, v in children.items()]
+		return self
 
-	def _use(self):
-		if self._used: raise RuntimeError("already used!")
-		self._real_set(_used=True)
+	def methods(self, **methods):
+		def do_return(return_value):
+			return lambda *a, **k: return_value
+
+		for k,v in methods.items():
+			setattr(self, k, do_return(v))
+		return self
+
+	def copying(self, other):
+		for attr in dir(other):
+			if _special_method(attr): continue
+			setattr(self, attr, lambda *a, **kw: None)
+		return self
 
 	def __setattr__(self, name, val):
-		self._use()
 		self._real_set(**{name:val})
 		return self._callback(name, val)
 
@@ -115,10 +126,21 @@ class Object(object):
 	def __str__(self): return self.__name
 
 class RecursiveStub(Object):
+	def __init__(self, name="unnamed object", create_on_access=True):
+		self.received_calls = []
+		super(RecursiveStub, self).__init__(name)
+		self._create_on_access = create_on_access
+
 	def __getattr__(self, name):
+		if not self._create_on_access:
+			return super(RecursiveStub, self).__getattr__(name)
 		obj = RecursiveStub(name=name)
 		setattr(self, name, obj)
 		return obj
+	
+	def __call__(self, *a, **kw):
+		self.received_calls.append(Call(a,kw))
+		return None
 
 class Call(object):
 	@classmethod
@@ -128,6 +150,16 @@ class Call(object):
 	def __init__(self, args, kwargs):
 		self.args = args
 		self.kwargs = kwargs
+		self.tuple = (self.args, self.kwargs)
+	
+	def __eq__(self, other):
+		if isinstance(other, type(self)):
+			return self.tuple == other.tuple
+		else:
+			return self.tuple == other
+	
+	def __ne__(self, other):
+		return not self.__eq__(other)
 	
 	def __str__(self):
 		if self.kwargs:
@@ -317,7 +349,6 @@ class MockAct(object):
 		args (tuple), and its keyword arguments match the kwargs (dict)
 		"""
 		def check_args(a, args):
-			print "checking %r against %r" % (a, args)
 			try:
 				splat_pos = map(lambda x: isinstance(x, SplatMatcher), args).index(True)
 			except ValueError:
@@ -346,7 +377,6 @@ class MockAct(object):
 			return True
 			
 		def check_kwargs(k, kwargs):
-			print repr(kwargs.keys())
 			if kwargs.keys() == ['__kwargs']:
 				return kwargs['__kwargs'].matches(k)
 
@@ -362,7 +392,6 @@ class MockAct(object):
 			return True
 
 		def check(*a, **k):
-			print ""
 			return check_args(a, args) and check_kwargs(k, kwargs)
 		return check
 	

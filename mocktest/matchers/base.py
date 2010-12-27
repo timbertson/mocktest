@@ -46,7 +46,6 @@ class AnyInstanceOf(Matcher):
 		return "any instance of %r" % (self._cls,)
 
 	def matches(self, other):
-		print repr(other)
 		return isinstance(other, self._cls)
 
 class SplatMatcherMaker(Matcher):
@@ -65,7 +64,6 @@ class SplatMatcher(object):
 		self._matcher = matcher
 	
 	def matches(self, args, kwargs):
-		print "splatter matching %r against %r" % (args,self._matcher)
 		return self._matcher.matches(args)
 
 	def desc(self):
@@ -73,9 +71,6 @@ class SplatMatcher(object):
 
 class ElementWiseSplatMatcher(SplatMatcher):
 	def matches(self, args, kwargs):
-		print "splatter matching %r against %r" % (args,self._matcher)
-		print repr(args)
-		print repr(map(self._matcher.matches, args))
 		return all(map(self._matcher.matches, args))
 
 	def desc(self):
