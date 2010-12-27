@@ -25,7 +25,7 @@ from mockmatcher import _special_method
 import types
 from functools import wraps
 
-#__unittest = True
+__unittest = True
 
 # set the SkipTest exception class
 try:

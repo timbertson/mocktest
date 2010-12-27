@@ -1,4 +1,3 @@
-from .. import helper
 from mocktest import TestCase
 
 from mocktest.matchers import *

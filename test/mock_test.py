@@ -1,333 +1,352 @@
-import os
-import sys
-import re
+from mocktest import *
+from mocktest.transaction import MockTransaction
+from mocktest.mockerror import MockError
+from unittest import TestCase
+import unittest
+from functools import wraps
 
-import helper
-from mocktest import TestCase
-from mocktest import raw_mock, mock
-from mocktest import MockError
-import mocktest
+def _dir(obj):
+	return filter(lambda x: not x.startswith('_'), dir(obj))
 
-mock_class = mocktest.silentmock.SilentMock
+def run_func(self, func):
+	from mocktest import TestCase as MockTestCase
+	class AnonymousTestCase(MockTestCase):
+		def runTest(self):
+			func(self)
+	suite = unittest.TestSuite(tests=(AnonymousTestCase(),))
+	result = unittest.TestResult()
+	suite.run(result)
+	assert result.testsRun == 1
+	assert _dir(obj) == [], _dir(obj)
+	return result
 
-class MockObjectAndWrapperTest(TestCase):
-	def is_a_mock(self, val):
-		self.assertTrue(isinstance(val, mock_class))
-		
-	def test_constructor(self):
-		mock_ = raw_mock()
-		wrapper = mock(mock_)
-		self.assertFalse(wrapper.called, "called not initialised correctly")
-		self.assertTrue(wrapper.called.exactly(0), "call_count not initialised correctly")
-	
-		self.assertEquals(wrapper.call_list, [])
-		self.assertEquals(wrapper._children, {})
-		self.assertEquals(wrapper.action, None)
-		self.assertEquals(wrapper.name, 'unnamed mock')
-		wrapper.name = 'lil bobby mock'
-	
-	def test_default_return_value(self):
-		wrapper = mock()
-		mock_ = wrapper.raw
-		self.assertTrue(wrapper.return_value is mocktest.silentmock.DEFAULT)
-		retval = mock_()
-		self.is_a_mock(retval)
-		self.assertEqual(mock(retval).name, 'return value for (unnamed mock)')
-		self.is_a_mock(wrapper.return_value)
+def passing(func):
+	@wraps(func)
+	def _run_test(self):
+		result = run_func(self, func)
+		assert result.wasSuccessful(), (result.failures + result.errors)[0][1]
+	_run_test.__name__ == func.__name__
+	return _run_test
 
-	def test_default_accessor_value(self):
-		wrapper = mock()
-		mock_ = wrapper.raw
-		retval = mock_.child_a
-		self.is_a_mock(retval)
-		self.assertEqual(mock(retval).name, 'child_a')
-		
-	def test_return_value(self):
-		wrapper = mock().returning(None)
-		self.assertEquals(None, wrapper.return_value)
-		self.assertEquals(None, wrapper.raw())
-	
-	def assert_mock_is_frozen(self, wrapper):
-		self.assertFalse(wrapper._modifiable_children)
-		self.assertRaises(AttributeError, lambda: wrapper.raw.nonexistant_child)
-		def set_thingie():
-			wrapper.raw.set_nonexistant_child = 'x'
-		self.assertRaises(AttributeError, lambda: set_thingie())
-		
-	def test_with_methods_should_set_return_values_and_freeze_mock(self):
-		wrapper = mock().with_methods('blob', '_blob', foo='bar', x=123, _blobx='underscore!')
-		mock_ = wrapper.raw
-		
-		self.is_a_mock(mock_.blob())
-		self.is_a_mock(mock_._blob())
-		self.assertEqual(mock_.foo(), 'bar')
-		self.assertEqual(mock_.x(), 123)
-		self.assertEqual(mock_._blobx(), 'underscore!')
-		
-		self.assertEqual(sorted(wrapper._children.keys()), ['_blob', '_blobx', 'blob', 'foo','x'])
-		self.assert_mock_is_frozen(wrapper)
-	
-	def test_with_children_should_set_return_values_and_freeze_mock(self):
-		wrapper = mock().with_children('blob', foo='bar', x=123)
-		mock_ = wrapper.raw
-		
-		self.is_a_mock(mock_.blob)
-		self.assertEqual(mock_.foo, 'bar')
-		self.assertEqual(mock_.x, 123)
-		
-		self.assertEqual(sorted(wrapper._children.keys()), ['blob', 'foo','x'])
-		self.assert_mock_is_frozen(wrapper)
-	
-	def test_name_as_first_arg_in_constructor(self):
-		wrapper = mock(raw_mock("li'l mocky"))
-		self.assertEqual(wrapper.name, "li'l mocky")
-	
-	class SpecClass:
-		b = "bee"
-		__something__ = None
-		def a(self):
-			return "foo"
-		
-	def test_spec_class_in_constructor(self):
-		wrapper = mock().with_spec(self.SpecClass)
-		self.assertEqual(wrapper._children.keys(), ['a','b'])
-		self.is_a_mock(wrapper.raw.a())
-		self.assert_mock_is_frozen(wrapper)
-		
-		self.assertRaises(AttributeError, lambda: wrapper.raw.__something__)
-	
-	def test_should_set_name_if_single_string_constructor_arg(self):
-		wrapper = mock('foo')
-		self.assertEqual(wrapper.name, 'foo')
-	
-	def test_spec_instance_in_constructor(self):
-		wrapper = mock().with_spec(self.SpecClass())
-		self.assertEqual(wrapper._children.keys(), ['a','b'])
-		self.is_a_mock(wrapper.raw.a())
-		self.assert_mock_is_frozen(wrapper)
-		self.assertRaises(AttributeError, lambda: wrapper.raw.__something__)
-	
-	def test_children_can_be_added_later(self):
-		wrapper = mock()
-		wrapper.raw.foo = 1
-		wrapper.raw.bar = 2
-		self.assertEqual(wrapper._children, {'foo':1, 'bar':2})
-	
-	def test_frozen(self):
-		wrapper = mock().frozen().unfrozen()
-		wrapper.raw.child_a = 'baz'
-		self.assertEqual(wrapper.raw.child_a, 'baz')
-		
-		wrapper = mock().frozen()
-		self.assert_mock_is_frozen(wrapper)
-	
-	def test_raising(self):
-		# class
-		wrapper = mock().raising(SystemError)
-		self.assertRaises(SystemError, wrapper.raw)
-	
-		# instance (with random extra args)
-		wrapper = mock().raising(SystemError("this simply will not do"))
-		self.assertRaises(SystemError, lambda: wrapper.raw('a','b',foo='blah'))
-	
-	def test_children_and_methods_can_coexist(self):
-		wrapper = mock().with_children(a='a').unfrozen().with_methods(b='b')
-		self.assertEqual(wrapper.raw.a, 'a')
-		self.assertEqual(wrapper.raw.b(), 'b')
-	
-	def test_side_effect_is_called(self):
-		wrapper = mock()
-		def effect():
-			raise SystemError('kablooie')
-		wrapper.action = effect
-		
-		self.assertRaises(SystemError, wrapper.raw)
-		self.assertEquals(True, wrapper.called)
-		
-		wrapper = mock()
-		results = []
-		def effect(n):
-			results.append('call %s' % (n,))
-		wrapper.action = effect
-		
-		wrapper.raw(1)
-		self.assertEquals(results, ['call 1'])
-		wrapper.raw(2)
-		self.assertEquals(results, ['call 1','call 2'])
-	
-		sentinel = object()
-		wrapper = mock().with_action(sentinel)
-		self.assertEquals(wrapper.action, sentinel)
-	
-	def test_side_effect_return_used(self):
-		def return_foo():
-			return "foo"
-		wrapper = mock().with_action(return_foo)
-		self.assertEqual(wrapper.raw(), 'foo')
-	
-	def test_side_effect_return_val_used_even_when_it_is_none(self):
-		def return_foo():
-			print "i've been called!"
-		wrapper = mock().with_action(return_foo)
-		self.assertEqual(wrapper.raw(), None)
-	
-	def test_should_allow_setting_of_magic_methods(self):
-		clean_wrapper = mock().named('clean')
-		modified_wrapper = mock().named('modified')
-		
-		modified_wrapper.method('__repr__').returning('my repr!')
-		modified_wrapper.method('__str__').returning('my str!')
-		modified_wrapper.method('__len__').returning(5)
-		
-		self.assertNotEqual(type(clean_wrapper.raw), type(modified_wrapper.raw))
-		self.assertEqual(type(clean_wrapper.raw).__name__, type(modified_wrapper.raw).__name__)
-		
-		val = repr(modified_wrapper.raw)
-		self.assertEqual(val, 'my repr!')
-		self.assertTrue(modified_wrapper.child('__repr__').called.once())
-	
-		str_val = str(modified_wrapper.raw)
-		self.assertEqual(str_val, 'my str!')
-		self.assertTrue(modified_wrapper.child('__str__').called.once())
-	
-	def test_should_allow_setting_of_magic_methods_in_bulk(self):
-		wrapper = mock().with_methods(__str__ = 's!', __len__ = 5)
-		self.assertEqual(str(wrapper.raw), 's!')
-		self.assertEqual(len(wrapper.raw), 5)
-	
-	def test_should_show_where_calls_were_made(self):
-		wrapper = mock()
-		mock_ = wrapper.raw
-		
-		mock_(1,2,345)
-		print str(wrapper.called)
-		self.assertTrue(re.search('// mock_test\.py:[0-9]+ +:: mock_\(1,2,345\)', str(wrapper.called)))
+def failing(func):
+	@wraps(func)
+	def _run_test(self):
+		result = run_func(self, func)
+		assert not result.wasSuccessful(), "test unexpectedly succeeded!"
+	_run_test.__name__ == func.__name__
+	return _run_test
 
-	def test_should_compare_call_records_to_tuples_and_other_call_records(self):
-		args = (1,2,3)
-		kwargs = {'x':123, 'y':456}
-		CallRecord = mocktest.silentmock.CallRecord
-		self.assertEqual(
-			mocktest.silentmock.CallRecord(args, kwargs),
-			mocktest.silentmock.CallRecord(args, kwargs))
+class Object(object): pass
+obj = Object()
 
-		self.assertEqual(
-			mocktest.silentmock.CallRecord(args, kwargs),
-			(args, kwargs))
-
-		self.assertEqual(
-			(args, kwargs),
-			mocktest.silentmock.CallRecord(args, kwargs))
-		
-	def test_call_recording(self):
-		wrapper = mock()
-		mock_ = wrapper.raw
-		
-		result = mock_()
-		self.assertEquals(mock_(), result, "different result from consecutive calls")
-		self.assertEquals(wrapper.call_list,
-			[
-				None, # called with nothing
-				None, # (twice)
-			])
+class TestMockingCalls(TestCase):
+	@passing
+	def test_return_values(self):
+		when(obj).meth.then_return('foo')
+		assert obj.meth() == 'foo', repr(obj.meth())
+		when(obj).meth(1,2,3).then_return('123')
+		assert obj.meth(1,2,3) == '123'
+		assert obj.meth(3, 2, 1) == 'foo'
+		self.assertRaises(AttributeError, lambda: obj.meth2)
 	
-		wrapper.reset()
-		self.assertEquals(wrapper.call_list, [])
-		
-		mock_('first_call')
-		mock_('second_call', 'arg2', call_=2)
-		self.assertEquals(wrapper.call_list,
-			[
-				('first_call',),
-				(('second_call','arg2'), {'call_':2}),
-			])
+	def test_should_revert_all_replaced_attrs(self):
+		self.assertEquals(_dir(object), [])
+		with MockTransaction:
+			when(obj).meth1.then_return(1)
+			assert obj.meth1() == 1
+			stub(obj).meth2.and_return(2)
+			assert obj.meth2() == 2
+			modify(obj).attr = 3
+			assert obj.attr == 3
+		self.assertEquals(_dir(object), [])
 
-class ProxyingTest(TestCase):
-	def setUp(self):
-		
-		self.actually_called = False
-		def called(whoami, *args, **kwargs):
-			print "ACTUALLY CALLED"
-			whoami.actually_called = True
-			return 'real_return'
-		
-		self.wrapper = mock(called).returning('mock_return')
+	@passing
+	def test_give_a_useful_message_when_overriding_an_inbuilt_method_is_impossible(self):
+		self.assertRaises(MockError, lambda: when('some string').__call__.then_return('fake'), message='Can\'t alter class of \'str\'')
 	
-	def test_should_not_let_you_set__should_intercept__twice(self):
-		self.wrapper.with_args(self, 'x',y=1)
-		self.assertRaises(MockError, lambda: self.wrapper.with_args(self))
-		self.assertRaises(MockError, lambda: self.wrapper.when_args(self))
-		
-	def test_should_act_as_mock_only_when_args_match(self):
-		self.wrapper.with_args(self, 'x',y=1)
+	@passing
+	def test_calling_with_incorrect_number_of_args_should_raise_TypeError(self):
+		when(obj).meth().then_return(True)
+		assert obj.meth() == True
+		self.assertRaises(TypeError, lambda: obj.meth(1))
 
-		self.assertEqual(self.wrapper.raw(self, 'x',y=1), 'mock_return')
-		self.assertTrue(self.wrapper.called.once())
-		self.assertFalse(self.actually_called)
-
-		# now this one should be ignored by the mock
-		self.assertEqual(self.wrapper.raw(self, 'y', y=1), 'real_return')
-		self.assertTrue(self.wrapper.called.once())
-		self.assertTrue(self.actually_called)
-		
-	def test_should_act_as_mock_only_when_should_intercept_returns_true(self):
-		def are_single(arg):
-			# accept exactly one argument
-			return True
-		
-		self.wrapper.when_args(are_single)
-		
-		self.assertEqual(self.wrapper.raw(self), 'mock_return')
-		self.assertTrue(self.wrapper.called.once())
-		self.assertFalse(self.actually_called)
-
-		# now this one should be ignored by the mock
-		self.assertEqual(self.wrapper.raw(self, 'y'), 'real_return')
-		self.assertTrue(self.wrapper.called.once())
-		self.assertTrue(self.actually_called)
+	@passing
+	def test_leaving_out_parens_matches_any_args(self):
+		when(obj).any_args.then_return(True)
+		assert obj.any_args() == True
+		assert obj.any_args(1) == True
+		assert obj.any_args(1, x=2) == True
 	
+	@passing
+	def test_mocking_class_methods(self):
+		when(Object).foo().then_return(True)
+		assert obj.foo() == True, repr(obj.foo())
 
-# -- options that clobber each other:
-class ClobberTest(TestCase):
-	def setUp(self):
-		self.mock = mock().named("bob")
+	@passing
+	def test_delegating_action(self):
+		when(obj).repr.then_return('repr')
+		when(obj).foo(1).then_call(lambda i: "%s proxied! %s" % (obj.repr(), i))
+		assert obj.foo(1) == "repr proxied! 1"
 	
-	def test_should_not_let_you_overwrite_return_value_with_action(self):
-		self.mock.returning('foo')
-		self.assertRaises(MockError, lambda: self.mock.with_action(lambda x: x))
+	@passing
+	def test_replacing_properties(self):
+		obj = Object()
+		obj.foo = 'original'
+		modify(obj).foo = 'replaced'
+		modify(obj).grand.child = True
+		assert obj.foo == 'replaced'
+		assert obj.grand.child
+		core._teardown()
+		core._setup()
+		assert obj.foo == 'original', obj.foo
+		self.assertRaises(AttributeError, lambda: obj.grand)
 
-	def test_should_not_let_you_overwrite_return_value_with_raises(self):
-		self.mock.returning('foo')
-		self.assertRaises(MockError, lambda: self.mock.raising(StandardError()), message =  "Cannot set action on mock 'bob': a return value has already been set")
 
-	def test_should_not_let_you_overwrite_raise_with_action(self):
-		self.mock.raising(StandardError())
-		self.assertRaises(MockError, lambda: self.mock.returning(1), message =  "Cannot set return value on mock 'bob': an action has already been set")
-
-	def test_should_not_let_you_overwrite_raise_with_return_value(self):
-		self.mock.raising(StandardError())
-		self.assertRaises(MockError, lambda: self.mock.returning(1), message =  "Cannot set return value on mock 'bob': an action has already been set")
-
-	def test_should_not_let_you_overwrite_action_with_return_value(self):
-		self.mock.with_action(lambda: 1)
-		self.assertRaises(MockError, lambda: self.mock.returning(1), message =  "Cannot set return value on mock 'bob': an action has already been set")
-
-	def test_should_not_let_you_overwrite_action_with_raise(self):
-		self.mock.with_action(lambda: 1)
-		self.assertRaises(MockError, lambda: self.mock.raising(1), message =  "Cannot set action on mock 'bob': an action has already been set")
+class TestMockingSpecialMethods(TestCase):
+	@passing
+	def test_mocking_call(self):
+		self.assertRaises(TypeError, lambda: obj())
+		when(obj).__call__(2).then_return('two')
+		when(obj).__call__(3).then_return('three')
+		assert obj(2) == 'two'
+		assert obj(3) == 'three'
 	
-	def test_should_let_you_clear_actions(self):
-		self.mock.with_action(lambda a: a)
-		del self.mock.action
-		self.mock.with_action(lambda a: a + 2)
-		del self.mock.action
+	def test_mocking_special_methods_should_revert_class_heirarchies(self):
+		with MockTransaction:
+			when(obj).__call__(2).then_return('two')
+			assert obj(2) == 'two'
+			print type(obj)
+			assert type(obj) is not Object
+			assert isinstance(obj, Object)
+		assert type(obj) is Object
+	
+	@passing
+	def test_mocking_length(self):
+		when(obj).__len__().then_return(2)
+		assert len(obj) == 2
+	
+	@passing
+	def test_mocking_special_methods_on_class_directly(self):
+		when(Object).__len__().then_return(5)
+		assert len(obj) == 5
+	
+class TestExpectations(TestCase):
+	@passing
+	def test_receiving_call_once(self):
+		expect(obj).meth.once()
+		obj.meth()
+
+	@failing
+	def test_receiving_call_too_many_times(self):
+		expect(obj).meth.once()
+		obj.meth()
+		obj.meth()
+
+	@failing
+	def test_receiving_call_not_enough_times(self):
+		expect(obj).meth.exactly(4).times()
+		obj.meth()
+		obj.meth()
+		obj.meth()
+	
+	@passing
+	def test_receiving_any_number_of_times(self):
+		stub(obj).meth()
+		stub(obj).meth(1).and_return(1)
+		assert obj.meth() == None
+		assert obj.meth() == None
+		assert obj.meth(1) == 1
+	
+	@passing
+	def test_at_least(self):
+		expect(obj).meth().at_least(2).times()
+		obj.meth()
+		obj.meth()
+		obj.meth()
+
+	@failing
+	def test_at_most(self):
+		expect(obj).meth().at_most(2).times()
+		obj.meth()
+		obj.meth()
+		obj.meth()
+	
+class TestMatchers(TestCase):
+	@passing
+	def test_any_single_arg(self):
+		when(obj).foo(Any).then_return(True)
+		assert obj.foo(1) == True
+		assert obj.foo('foo') == True
+		self.assertRaises(TypeError, lambda: obj.foo())
+		self.assertRaises(TypeError, lambda: obj.foo(1, 2))
+
+	@passing
+	def test_any_multiple_args(self):
+		when(obj).foo(*Any).then_return(True)
+		assert obj.foo(1) == True
+		assert obj.foo('foo') == True
+		assert obj.foo() == True
+		assert obj.foo(1, 2) == True
+		self.assertRaises(TypeError, lambda: obj.foo(1, 2, x=3))
+
+	@passing
+	def test_any_named_args(self):
+		when(obj).foo(**Any).then_return(True)
+		assert obj.foo(x=1) == True
+		assert obj.foo(y='foo') == True
+		assert obj.foo() == True
+		assert obj.foo(x=1, y=2) == True
+		self.assertRaises(TypeError, lambda: obj.foo(1, 2, x=3))
+	
+	@passing
+	def test_matching_only_some_kwargs(self):
+		when(obj).foo(**kwargs_containing(x=1)).then_return(True)
+		assert obj.foo(x=1)
+		assert obj.foo(x=1, y=2)
+		self.assertRaises(TypeError, lambda: obj.foo(x=3))
+	
+	@passing
+	def test_using_splats_is_enforced_for_kwargs(self):
+		self.assertRaises(RuntimeError,
+			lambda: when(obj).foo(kwargs_containing(x=1)),
+			message="KwargsMatcher instance used without prefixing with '**'")
+
+	@passing
+	def test_using_splats_is_enforced_for_args(self):
+		self.assertRaises(RuntimeError,
+			lambda: when(obj).foo(args_containing(1)),
+			message="SplatMatcher instance used without prefixing with '*'")
+
+	@passing
+	def test_matching_only_some_args(self):
+		when(obj).foo(*args_containing(1,2)).then_return(True)
+		assert obj.foo(1,4,3,2)
+		assert obj.foo(1,2)
+		self.assertRaises(TypeError, lambda: obj.foo(1))
+
+	@passing
+	def test_any_args_at_all(self):
+		when(obj).foo(*Any, **Any).then_return(True)
+		assert obj.foo(x=1) == True
+		assert obj.foo(y='foo') == True
+		assert obj.foo() == True
+		assert obj.foo(x=1, y=2) == True
+		assert obj.foo(1, 2, x=3) == True
+	
+	@passing
+	def test_any_instance(self):
+		when(obj).foo(Any(int)).then_return(True)
+		assert obj.foo(1)
+		assert obj.foo(2)
+		self.assertRaises(TypeError, lambda: obj.foo('str'))
+		self.assertRaises(TypeError, lambda: obj.foo(int))
+		self.assertRaises(TypeError, lambda: obj.foo(1,2))
+
+	@passing
+	def test_multiple_any_instance(self):
+		when(obj).foo(*Any(int)).then_return(True)
+		assert obj.foo(1)
+		assert obj.foo(2)
+		assert obj.foo()
+		assert obj.foo(1,2,3,4)
+		self.assertRaises(TypeError, lambda: obj.foo('str'))
+		self.assertRaises(TypeError, lambda: obj.foo(int))
+
+	@passing
+	def test_multiple_any_instance_after_normal_args(self):
+		when(obj).foo(Any(str), *Any(int)).then_return(True)
+		assert obj.foo('str')
+		assert obj.foo('string', 2)
+		self.assertRaises(TypeError, lambda: obj.foo(1,2,3,4))
+		self.assertRaises(TypeError, lambda: obj.foo())
+		self.assertRaises(TypeError, lambda: obj.foo(int))
+
+	##TODO: this should work in py3k?
+	#@passing
+	#def test_splat_in_amongst_normal_matchers(self):
+	#	when(obj).foo(1, 2, *Any(int), 3, 4, 5).then_return(True)
+	#	assert obj.foo(1,2,3,4,5)
+	#	assert obj.foo(1,2,0,0,0,3,4,5)
+	#	self.assertRaises(TypeError, lambda: obj.foo(1,2,3,4,4,5))
+	#	self.assertRaises(TypeError, lambda: obj.foo())
+	#	self.assertRaises(TypeError, lambda: obj.foo(int))
+
+class TestMockCreation(TestCase):
+	@passing
+	def test_creation_methods_kwargs(self):
+		obj = mock('foo')
+		modify(obj).methods(x=1, y=2)
+		assert obj.x() == 1
+		assert obj.x(1,2,3) == 1
+		assert obj.y() == 2, obj.y()
+
+	@passing
+	def test_creation_children_kwargs(self):
+		obj = mock('foo')
+		modify(obj).children(x=1, y=2)
+		assert obj.x == 1
+		assert obj.y == 2
+	
+	@passing
+	def test_creation_copying_existing_object(self):
+		class Base(object):
+			def three_args(self, a, b, c):
+				raise RuntimeError("shouldn't actually be called!")
+			def _private(self):
+				raise RuntimeError("shouldn't actually be called!")
+			def __call__(self):
+				raise RuntimeError("shouldn't actually be called!")
+
+		base = Base()
+		obj = mock('foo', create_unknown_children=False)
+		modify(obj).copying(base).children(x=1)
+		assert obj.three_args(1,2,3) == None
+		assert obj._private() == None
+		assert obj() == None
+		assert obj.x == 1
+		self.assertRaises(AttributeError, lambda: obj.no_such_method())
+	
+	@passing
+	def test_responses_should_use_most_recently_added_first(self):
+		when(obj).foo(Any).then_return('anything')
+		assert obj.foo(1) == 'anything'
+		when(obj).foo(1).then_return('one')
+		assert obj.foo(1) == 'one'
+		assert obj.foo(2) == 'anything'
+
+class CallInspection(TestCase):
+	@passing
+	def test_inspect_calls(self):
+		obj = mock('foo')
+		obj.a()
+		obj.a(1)
+		obj.b(1,2,3)
+		obj.c(1,2,3,x=1)
+		self.assertEquals(obj.a.received_calls, [Call.like(), Call.like(1)])
+		self.assertEquals(obj.b.received_calls, [Call.like(1,2,3)])
+		self.assertEquals(obj.c.received_calls, [((1,2,3), {'x':1})])
+
+class TestSkeletons(TestCase):
+	def test_inheriting_setup_teardown(self):
+		class FirstTestCase(TestCase):
+			def setUp(self):
+				self.x = 1
+
+			def tearDown(self):
+				pass
+
+			def test_that_will_fail(self):
+				assert 1 == 2
+
+		class SecondTestCase(Skeleton(FirstTestCase)):
+			def test_that_ensures_setup_was_run(self):
+				assert self.x == 1
+				assert hasattr(self, 'tearDown')
 		
-		self.mock.returning(1)
-		del self.mock.return_value
-		self.mock.returning(2)
-		del self.mock.return_value
-		
-		self.mock.raising(StandardError())
-		del self.mock.action
-		self.mock.raising(RuntimeError())
-		del self.mock.action
+		suite = unittest.makeSuite(SecondTestCase)
+		result = unittest.TestResult()
+		suite.run(result)
+		assert result.testsRun == 1, repr(result)
+		assert result.wasSuccessful(), result.errors[0][1]
+
+

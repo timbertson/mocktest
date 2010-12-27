@@ -1,13 +1,19 @@
 import sys, traceback, os
 
+__all__ = ['Call']
+
 class Call(object):
-	def __init__(self, args, kwargs, stack = True):
+	def __init__(self, args, kwargs, stack = False):
 		self.tuple = (args, kwargs)
-		self.args = args if len(args) > 0 else None
-		self.kwargs = kwargs if len(kwargs) > 0 else None
+		self.args = args
+		self.kwargs = kwargs
 
 		if stack is True:
 			self._stack = traceback.extract_stack(sys._getframe())
+
+	@classmethod
+	def like(cls, *a, **kw):
+		return cls(a, kw)
 
 	def _concise_stack(self):
 		stack = self._stack
@@ -35,18 +41,23 @@ class Call(object):
 		return not self.__eq__(other)
 
 	def play(self, function):
+		print repr((self.args, self.kwargs))
 		return function(*self.args, **self.kwargs)
-	
-	def __str__(self):
+
+	def desc(self, include_stack=False):
 		if self.empty:
-			arg_desc = "No arguments"
+			arg_desc = "()"
 		else:
 			sep = ', '
-			args = None if self.args is None else sep.join(map(repr, self.args))
-			kwargs = None if self.kwargs is None else sep.join(["%s=%r" % (key, val) for key, val in self.kwargs.items()])
-			arg_desc = sep.join(filter(lambda x: x is not None, (args, kwargs)))
+			args = sep.join(map(repr, self.args))
+			kwargs = sep.join(["%s=%r" % (key, val) for key, val in self.kwargs.items()])
+			arg_desc = "(%s)" % (sep.join(filter(None, (args, kwargs))),)
 		try:
-			return "%-24ls // %s" % (arg_desc, self._concise_stack())
-		except (IndexError, AttributeError):
+			if include_stack:
+				arg_desc = "%-24ls // %s" % (arg_desc, self._concise_stack())
+		finally:
 			return arg_desc
+
+	def __str__(self):
+		return self.desc(include_stack=True)
 

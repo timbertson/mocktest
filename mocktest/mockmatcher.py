@@ -1,9 +1,18 @@
 from matchers import Matcher, SplatMatcher
 from mockerror import MockError
+from callrecord import Call
 from transaction import MockTransaction
 
 from lib.singletonclass import ensure_singleton_class
 __unittest = True
+
+__all__ = [
+	'when',
+	'expect',
+	'stub',
+	'mock',
+	'modify',
+]
 
 def when(obj):
 	return GetWrapper(lambda name: mock_when(obj, name))
@@ -14,7 +23,7 @@ def expect(obj):
 def stub(obj):
 	return GetWrapper(lambda name: mock_stub(obj, name))
 
-def mock(name, create_unknown_children=True):
+def mock(name='unnamed mock', create_unknown_children=True):
 	return RecursiveStub(name, create_unknown_children)
 
 def modify(obj):
@@ -76,6 +85,7 @@ class RecursiveAssignmentWrapper(RealSetter):
 		return self
 
 	def __setattr__(self, name, val):
+		print repr(name)
 		self._real_set(**{name:val})
 		return self._callback(name, val)
 
@@ -127,42 +137,12 @@ class RecursiveStub(Object):
 		return obj
 	
 	def __call__(self, *a, **kw):
-		self.received_calls.append(Call(a,kw))
+		self.received_calls.append(Call(a,kw, stack=True))
 		return None
 
-class Call(object):
-	@classmethod
-	def like(cls, *a, **kw):
-		return cls(a, kw)
-
-	def __init__(self, args, kwargs):
-		self.args = args
-		self.kwargs = kwargs
-		self.tuple = (self.args, self.kwargs)
-	
-	def __eq__(self, other):
-		if isinstance(other, type(self)):
-			return self.tuple == other.tuple
-		else:
-			return self.tuple == other
-	
-	def __ne__(self, other):
-		return not self.__eq__(other)
-	
-	def __str__(self):
-		if self.kwargs:
-			kwargs = ", " + ", ".join(["%s=%r" % (k,v) for k,v in self.kwargs.items()])
-		else:
-			kwargs = ''
-		return "(%s%s)" % (", ".join(map(repr, self.args)), kwargs)
-	
-	def play(self, function):
-		return function(*self.args, **self.kwargs)
-
 def stub_method(obj, name):
-	assert MockTransaction.started
+	assert MockTransaction.started, "Mock transaction has not been started. Make sure you are inheriting from mocktest.TestCase"
 	if _special_method(name) and not isinstance(obj, type):
-		print "special method: %s"% (name,)
 		ensure_singleton_class(obj)
 		obj = type(obj)
 	add_teardown_for_attr(obj, name)
@@ -193,14 +173,14 @@ class StubbedMethod(object):
 		return act
 	
 	def __call__(self, *a, **kw):
-		call = Call(a, kw)
+		call = Call(a, kw, stack=True)
 		self.calls.append(call)
 		for act in reversed(self.acts):
 			if act._matches(call):
 				return act._act_upon(call)
 		else:
 			act_condition_descriptions = ["   - " + act.condition_description for act in self.acts]
-			raise TypeError("stubbed method %r received unexpected arguments: %s\nAllowable argument conditions are:\n%s" % (self.name, call,"\n".join(act_condition_descriptions)))
+			raise TypeError("stubbed method %r received unexpected arguments: %s\nAllowable argument conditions are:\n%s" % (self.name, call.desc(),"\n".join(act_condition_descriptions)))
 
 	def _verify(self):
 		for act in self.acts:

@@ -3,9 +3,9 @@ import re
 import sys
 import os
 
-import helper
 import mocktest
-from mocktest import mock, raw_mock, pending, ignore, expect, core
+import unittest
+from mocktest import core, modify, when, MockTransaction, mock, expect, ignore, pending
 
 def assert_desc(expr):
 	assert expr, expr
@@ -23,24 +23,25 @@ class TestAutoSpecVerification(unittest.TestCase):
 
 	def setUp(self):
 		core._setup()
-		self.stderr = mock().named('stderr')
-		sys.stderr = self.stderr.raw
-		self.output = mock(sys.stderr.write)
-		print "all expectations is %r" % (core.MockWrapper._all_expectations,)
+		self.output = []
+		def write(s):
+			print "appending: %s" % s
+			self.output.append(s)
+		modify(sys).stderr.write = write
 	
 	def tearDown(self):
-		print "all expectations is %r" % (core.MockWrapper._all_expectations,)
 		core._teardown()
 	
+	#TODO: duplicated?
 	def run_suite(self, class_):
 		core._teardown()
 		suite = unittest.makeSuite(class_)
 		result = unittest.TestResult()
 		suite.run(result)
-		ret = result
 		core._setup()
 		return result
 	
+	#TODO: duplicated?
 	def run_method(self, test_func):
 		class SingleTest(mocktest.TestCase):
 			test_method = test_func
@@ -59,59 +60,58 @@ class TestAutoSpecVerification(unittest.TestCase):
 		backup_setup = core._setup
 		backup_teardown = core._teardown
 		
-		core._setup = mock().with_action(lambda: capture("_setup")).raw
-		core._teardown = mock().with_action(lambda: capture("_teardown")).raw
-		
-		class Foo(mocktest.TestCase):
-			def setUp(self):
-				capture("setup")
-			def tearDown(self):
-				capture("teardown")
-			def test_main_is_called(self):
-				capture("main")
+		try:
+			when(core)._setup.then_call(lambda: capture("_setup"))
+			when(core)._teardown.then_call(lambda: capture("_teardown"))
+			
+			class Foo(mocktest.TestCase):
+				def setUp(self):
+					capture("setup")
+				def tearDown(self):
+					capture("teardown")
+				def test_main_is_called(self):
+					capture("main")
 
-		suite = unittest.makeSuite(Foo)
-		result = unittest.TestResult()
-		suite.run(result)
+			suite = unittest.makeSuite(Foo)
+			result = unittest.TestResult()
+			suite.run(result)
 
-		self.assertTrue(result.wasSuccessful())
-		self.assertEqual(lines, ['_setup', 'setup', 'main', '_teardown', 'teardown'])
+			self.assertTrue(result.wasSuccessful())
+			self.assertEqual(lines, ['_setup', 'setup', 'main', '_teardown', 'teardown'])
 		
-		core._setup = backup_setup
-		core._teardown = backup_teardown
+		finally:
+			core._setup = backup_setup
+			core._teardown = backup_teardown
 	
 	def test_ignore(self):
-		callback = raw_mock()
-		mock(callback).is_expected.exactly(0).times
+		callback = mock()
+		expect(callback).__call__.never()
 			
 		@ignore
 		def test_failure(self):
 			callback('a')
 		
 		self.assert_(self.run_method(test_failure).wasSuccessful())
-		assert_desc(self.output.called.with_('[[[ IGNORED ]]] ... '))
 	
 	def test_should_ignore_with_description(self):
-		callback = raw_mock()
-		mock(callback).is_expected.exactly(0).times
+		callback = mock()
+		expect(callback).__call__.never()
 			
 		@ignore('not done yet')
 		def test_failure(self):
 			callback('a')
 		
 		self.assert_(self.run_method(test_failure).wasSuccessful())
-		assert_desc(self.output.called.with_('[[[ IGNORED ]]] (not done yet) ... '))
 	
 	def test_pending(self):
-		callback = raw_mock()
+		callbacks = []
+		callback = callbacks.append
 			
 		@pending
 		def test_failure(self):
 			callback('a')
 			raise RuntimeError, "something went wrong!"
-		
 		self.assert_(self.run_method(test_failure).wasSuccessful())
-		assert_desc(self.output.called.with_('[[[ PENDING ]]] ... '))
 		
 		@pending("reason")
 		def test_failure_with_reason(self):
@@ -119,7 +119,6 @@ class TestAutoSpecVerification(unittest.TestCase):
 			callback('b')
 		
 		self.assert_(self.run_method(test_failure_with_reason).wasSuccessful())
-		assert_desc(self.output.called.with_('[[[ PENDING ]]] (reason) ... '))
 		
 		@pending
 		def test_successful_pending_test(self):
@@ -127,9 +126,7 @@ class TestAutoSpecVerification(unittest.TestCase):
 			callback('c')
 		
 		self.assertEqual(self.run_method(test_successful_pending_test).wasSuccessful(), False)
-		assert_desc(self.output.called.with_('test_successful_pending_test PASSED unexpectedly '))
-		
-		self.assertEqual(mock(callback).called.exactly(2).times.get_calls(), [('a',), ('c',)])
+		self.assertEqual(callbacks, ['a', 'c'])
 	
 	def test_pending_should_raise_skipTest(self):
 		@pending
@@ -144,17 +141,20 @@ class TestAutoSpecVerification(unittest.TestCase):
 	
 	def test_invalid_usage_after_teardown(self):
 		core._teardown()
-		
-		e = None
 		try:
-			mock()
-		except Exception, e_:
-			e = e_
+			e = None
+			try:
+				m = mock()
+				expect(m).foo().never()
+			except Exception, e_:
+				print repr(e_)
+				e = e_
 
-		self.assertFalse(e is None, "no exception was raised")
-		self.assertEqual(e.__class__, RuntimeError)
-		self.assertEqual(e.message, "MockWrapper._setup has not been called. Make sure you are inheriting from mocktest.TestCase, not unittest.TestCase")
-		core._setup()
+			self.assertFalse(e is None, "no exception was raised")
+			self.assertEqual(e.message, "Mock transaction has not been started. Make sure you are inheriting from mocktest.TestCase")
+			self.assertEqual(e.__class__, AssertionError)
+		finally:
+			core._setup()
 		
 	def test_expectation_errors_should_be_failures(self):
 		class myTest(mocktest.TestCase):
@@ -255,11 +255,10 @@ class TestAutoSpecVerification(unittest.TestCase):
 		print "failmsgs = %s" % (failmsgs,)
 		self.assertTrue("AssertionError: foo went bad!" in failmsgs)
 		
-	def test_assert_equal_should_work(self):
+	def test_assert_equal_should_work_for_dicts(self):
 		def dictEQ(s):
 			s.assertEqual({'a':'1'}, {'a':'1'})
 		self.assertTrue(self.run_method(dictEQ).wasSuccessful())
-
 
 
 	def test_assert_raises_matches(self):
@@ -305,62 +304,46 @@ class TestAutoSpecVerification(unittest.TestCase):
 		self.assertFalse(result.wasSuccessful())
 
 	def test_expectation_formatting(self):
+		m = mock()
+		expectation = expect(m).__call__('foo', bar=1).twice()
+		m('foo', bar=1)
+		m('foo', bar=1)
+
 		self.assertEqual(
-			repr(mock().called.with_('foo', bar=1).twice()),
+			repr(expectation).strip(),
 			'\n'.join([
-				'Mock "unnamed mock" did not match expectations:',
-				' expected exactly 2 calls with arguments equal to: \'foo\', bar=1',
-				' received 0 calls'])
+				'Mock "__call__" has not yet checked expectations:',
+				' expected exactly 2 calls with arguments equal to: (\'foo\', bar=1)'])
 		)
 	
-	def test_expect_should_work_on_a_mock_or_wrapper(self):
-		wrapper = mock()
-		mock_ = wrapper.raw
-		
-		expect(mock_.a).once()
-		wrapper.expects('b').once()
-		wrapper.child('c').is_expected.once()
-
-		self.assertTrue(len(core.MockWrapper._all_expectations) == 3)
-		
-		mock_.a()
-		mock_.b()
-		mock_.c()
-	
-	def test_is_not_expected(self):
-		wrapper = mock()
-		mock_ = wrapper.raw
-		
-		expect(mock_.a).once()
-		wrapper.child('b').is_not_expected
-		mock_.a()
-		
-		core._teardown()
-		core._setup()
-		
-
 	def test_reality_formatting(self):
-		m = mock().named('ze_mock').raw
-		m(1,2,3)
-		m(foo='bar')
-		m()
-		m(1, foo=2)
-		
-		line_agnostic_repr = [
-			re.sub('\.py:[0-9 ]{3} ', '.py:LINE ', line)
-			for line in repr(mock(m).called.once()).split('\n')]
-		
-		expected_lines = [
-			'Mock "ze_mock" did not match expectations:',
-			' expected exactly 1 calls',
-			' received 4 calls with arguments:',
-			'  1:   1, 2, 3                  // mocktest_test.py:LINE :: m(1,2,3)',
-			"  2:   foo='bar'                // mocktest_test.py:LINE :: m(foo='bar')",
-			'  3:   No arguments             // mocktest_test.py:LINE :: m()',
-			'  4:   1, foo=2                 // mocktest_test.py:LINE :: m(1, foo=2)']
-		
-		for got, expected in zip(line_agnostic_repr, expected_lines):
-			self.assertEqual(got, expected)
+		core._teardown()
+		try:
+			with MockTransaction:
+				m = mock('meth')
+				expect(m).meth.once()
+				m.meth(1,2,3)
+				m.meth(foo='bar')
+				m.meth()
+				m.meth(1, foo=2)
+		except AssertionError, e:
+			line_agnostic_repr = [
+				re.sub('\.py:[0-9 ]{3} ', '.py:LINE ', line)
+				for line in str(e).split('\n')]
+			
+			expected_lines = [
+				'Mock "meth" did not match expectations:',
+				' expected exactly 1 calls',
+				' received 4 calls with arguments:',
+				'  1:   (1, 2, 3)                // mocktest_test.py:LINE :: m.meth(1,2,3)',
+				"  2:   (foo='bar')              // mocktest_test.py:LINE :: m.meth(foo='bar')",
+				'  3:   ()                       // mocktest_test.py:LINE :: m.meth()',
+				'  4:   (1, foo=2)               // mocktest_test.py:LINE :: m.meth(1, foo=2)']
+			
+			for got, expected in zip(line_agnostic_repr, expected_lines):
+				self.assertEqual(got, expected)
+		finally:
+			core._setup()
 	
 	def test_removing_of_mocktest_lines_from_exception_traces(self):
 		# unittest has built-in functionality to ignore lines that correspond
@@ -385,7 +368,7 @@ class TestAutoSpecVerification(unittest.TestCase):
 		ensure_no_mocktest_files_appear_in_failure(lambda slf: slf.assertRaises(TypeError, self.make_error))
 		
 		def failing_mock_expectation(slf):
-			mocktest.mock().is_expected
+			expect(mock()).foo
 			# emulate a refresh
 			try:
 				core._teardown()
@@ -393,19 +376,18 @@ class TestAutoSpecVerification(unittest.TestCase):
 				core._setup()
 		ensure_no_mocktest_files_appear_in_failure(failing_mock_expectation)
 
-		
-
-class MockTestTest(mocktest.TestCase):
+class MockTestTest(unittest.TestCase):
 	def test_should_do_expectations(self):
-		f = mock()
-		f.expects('foo').once()
-		f.raw.foo('a')
-		f.raw.foo()
-		self.assertRaises(AssertionError, core._teardown, matching=re.compile('Mock "foo" .*expected exactly 1 calls.* received 2 calls.*', re.DOTALL))
+		try:
+			with MockTransaction:
+				f = mock()
+				expect(f).foo.once()
+				f.foo('a')
+				f.foo()
+			raise RuntimeError("should not reach here!")
+		except AssertionError, e:
+			assert re.compile('Mock "foo" .*expected exactly 1 calls.* received 2 calls.*', re.DOTALL).match(str(e)), str(e)
 		
-		# pretend we're in a new test (wipe the expected calls register)
-		core.MockWrapper._all_expectations = []
-
 class Mystr(object):
 	def __init__(self, s):
 		self.s = s

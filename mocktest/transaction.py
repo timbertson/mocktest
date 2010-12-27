@@ -1,3 +1,7 @@
+from mockerror import MockError
+
+__unittest = True
+
 class MockTransaction(object):
 	teardown_actions = None
 	started = False
@@ -7,12 +11,13 @@ class MockTransaction(object):
 	
 	@classmethod
 	def __enter__(cls):
-		assert not cls.started, "MockTransaction started while already in progress!"
+		if cls.started: raise MockError("MockTransaction started while already in progress!")
 		cls.teardown_actions = []
 		cls.started = True
 
 	@classmethod
 	def __exit__(cls, *optional_err_info):
+		if not cls.started: raise MockError("MockTransaction is not in progress!")
 		errors = []
 		for action in reversed(cls.teardown_actions):
 			try:
@@ -22,6 +27,6 @@ class MockTransaction(object):
 		cls.teardown_actions = None
 		cls.started = False
 		if errors:
-			raise MockError("Errors occurred during mocktest cleanup:\n%s" % ("\n".join(errors),))
+			raise errors[0]
 		return False
 
