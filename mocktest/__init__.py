@@ -1,8 +1,6 @@
 from core import *
 from mocktest import *
-from mockmatcher import *
-#from mockerror import *
-#from stub import *
+from mocking import *
 from matchers import *
 from callrecord import *
 

@@ -21,7 +21,7 @@ import unittest
 import re
 import sys
 import core
-from mockmatcher import _special_method
+from mocking import _special_method
 import types
 from functools import wraps
 

@@ -8,6 +8,7 @@ from functools import wraps
 def _dir(obj):
 	return filter(lambda x: not x.startswith('_'), dir(obj))
 
+#TODO: expose these for mocktest_test?
 def run_func(self, func):
 	from mocktest import TestCase as MockTestCase
 	class AnonymousTestCase(MockTestCase):
