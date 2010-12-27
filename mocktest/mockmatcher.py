@@ -1,24 +1,31 @@
-from matchers import Matcher
+from matchers import Matcher, SplatMatcher
 __unittest = True
 
 class MockTransaction(object):
 	teardown_actions = None
+	started = False
 	@classmethod
 	def add_teardown(cls, func):
 		cls.teardown_actions.append(func)
 	
 	@classmethod
 	def __enter__(cls):
-		assert cls.teardown_actions is None
+		assert not cls.started, "MockTransaction started while already in progress!"
 		cls.teardown_actions = []
+		cls.started = True
 
 	@classmethod
 	def __exit__(cls, *optional_err_info):
-		try:
-			for action in reversed(cls.teardown_actions):
+		errors = []
+		for action in reversed(cls.teardown_actions):
+			try:
 				action()
-		finally:
-			cls.teardown_actions = None
+			except StandardError, e:
+				errors.append(e)
+		cls.teardown_actions = None
+		cls.started = False
+		if errors:
+			raise AssertionError("Errors occurred during mocktest cleanup:\n%s" % ("\n".join(errors),))
 		return False
 
 def when(obj):
@@ -30,6 +37,8 @@ def expect(obj):
 def stub(obj):
 	return GetWrapper(lambda name: mock_stub(obj, name))
 
+def mock(name):
+	return RecursiveStub(name)
 
 def replace(obj):
 	replacements = []
@@ -39,15 +48,19 @@ def replace(obj):
 	return RecursiveAssignmentWrapper(replace_)
 
 def replace_attr(obj, name, val, generate_reset=True):
+	assert MockTransaction.started
 	if generate_reset:
-		try:
-			old_attr = getattr(obj, name)
-			reset = lambda: setattr(obj, name, old_attr)
-		except AttributeError:
-			reset = lambda: delattr(obj, name)
-		MockTransaction.add_teardown(reset)
+		add_teardown_for_attr(obj, name)
 	setattr(obj, name, val)
 	return val
+
+def add_teardown_for_attr(obj, attr):
+	try:
+		old_attr = getattr(obj, attr)
+		reset = lambda: setattr(obj, attr, old_attr)
+	except AttributeError:
+		reset = lambda: delattr(obj, attr)
+	MockTransaction.add_teardown(reset)
 
 
 def mock_when(obj, name):
@@ -127,13 +140,12 @@ class Call(object):
 		return function(*self.args, **self.kwargs)
 
 def stub_method(obj, name):
+	assert MockTransaction.started
+	add_teardown_for_attr(obj, name)
 	try:
 		old_attr = getattr(obj, name)
 		if isinstance(old_attr, StubbedMethod):
 			return old_attr
-		def reset():
-			setattr(obj, name, old_attr)
-		MockTransaction.add_teardown(reset)
 	except AttributeError:
 		pass
 	new_attr = StubbedMethod(name)
@@ -148,6 +160,9 @@ class StubbedMethod(object):
 		self.calls = []
 		MockTransaction.add_teardown(self._verify)
 	
+	def __repr__(self):
+		return "stubbed method %r" %(self.name,)
+	
 	def _new_act(self, name):
 		act = MockAct(name)
 		self.acts.append(act)
@@ -160,7 +175,8 @@ class StubbedMethod(object):
 			if act._matches(call):
 				return act._act_upon(call)
 		else:
-			raise TypeError("no matching actions found for arguments: %s" % (call,))
+			act_condition_descriptions = ["   - " + act.condition_description for act in self.acts]
+			raise TypeError("stubbed method %r received unexpected arguments: %s\nAllowable argument conditions are:\n%s" % (self.name, call,"\n".join(act_condition_descriptions)))
 
 	def _verify(self):
 		for act in self.acts:
@@ -197,7 +213,7 @@ class MockAct(object):
 		"""
 		self.__assert_not_set(self._cond_args, "argument condition")
 		self._cond_args = self._args_equal_func(args, kwargs)
-		self._cond_description = "with arguments equal to: %s" % (Call(args, kwargs),)
+		self._cond_description = "arguments equal to: %s" % (Call(args, kwargs),)
 		return self
 
 	def _matches(self, call):
@@ -219,6 +235,12 @@ class MockAct(object):
 		if self._action is None:
 			return None
 		return call.play(self._action)
+
+	@property
+	def condition_description(self):
+		if self._cond_description is None:
+			return "any arguments"
+		return self._cond_description
 	
 	def where(self, func):
 		"""
@@ -294,14 +316,43 @@ class MockAct(object):
 		returns a function that returns whether its arguments match the
 		args (tuple), and its keyword arguments match the kwargs (dict)
 		"""
-		def check(*a, **k):
-			if not len(a) == len(args) and len(k) == len(kwargs):
+		def check_args(a, args):
+			print "checking %r against %r" % (a, args)
+			try:
+				splat_pos = map(lambda x: isinstance(x, SplatMatcher), args).index(True)
+			except ValueError:
+				splat_pos = None
+
+			if splat_pos is not None:
+				expected_leading_args = args[:splat_pos]
+				leading_args = a[:splat_pos]
+				leading_match = check_args(leading_args, expected_leading_args)
+				if not leading_match:
+					return False
+
+				#TODO: support trailing args in py3
+				assert splat_pos == len(args)-1
+
+				splattable_args = a[splat_pos:]
+				splat_item = args[splat_pos]
+				return splat_item.matches(splattable_args, {})
+
+			if not len(a) == len(args):
 				return False
-			
+
 			for expected, actual in zip(args, a):
 				if not self._match_or_equal(expected, actual):
 					return False
+			return True
 			
+		def check_kwargs(k, kwargs):
+			print repr(kwargs.keys())
+			if kwargs.keys() == ['__kwargs']:
+				return kwargs['__kwargs'].matches(k)
+
+			if not len(k) == len(kwargs):
+				return False
+
 			if set(kwargs.keys()) != set(k.keys()):
 				return False
 				
@@ -309,6 +360,10 @@ class MockAct(object):
 				if not self._match_or_equal(kwargs[key], k[key]):
 					return False
 			return True
+
+		def check(*a, **k):
+			print ""
+			return check_args(a, args) and check_kwargs(k, kwargs)
 		return check
 	
 	def _equals_or_matches(self, expected, actual):
@@ -331,7 +386,7 @@ class MockAct(object):
 		times = 'at least one' if self._multiplicity_description is None else self._multiplicity_description
 		desc = "%s calls" % (times,)
 		if self._cond_description is not None:
-			desc += " %s" % (self._cond_description)
+			desc += " with %s" % (self._cond_description)
 		return desc
 	
 	def describe_reality(self, call_list):

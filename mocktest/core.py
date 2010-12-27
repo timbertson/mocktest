@@ -7,6 +7,6 @@
 
 __unittest = True
 
-from mockmatcher import *
+from mockmatcher import MockTransaction
 _setup = MockTransaction.__enter__
 _teardown = MockTransaction.__exit__

@@ -3,6 +3,9 @@ from unittest import TestCase
 import unittest
 from functools import wraps
 
+def _dir(obj):
+	return filter(lambda x: not x.startswith('_'), dir(obj))
+
 def run_func(self, func):
 	from mocktest import TestCase as MockTestCase
 	class AnonymousTestCase(MockTestCase):
@@ -12,6 +15,7 @@ def run_func(self, func):
 	result = unittest.TestResult()
 	suite.run(result)
 	assert result.testsRun == 1
+	assert _dir(obj) == [], _dir(obj)
 	return result
 
 def passing(func):
@@ -43,11 +47,22 @@ class TestMockingCalls(TestCase):
 		assert obj.meth(3, 2, 1) == 'foo'
 		self.assertRaises(AttributeError, lambda: obj.meth2)
 	
+	def test_should_revert_all_replaced_attrs(self):
+		self.assertEquals(_dir(object), [])
+		with MockTransaction:
+			when(obj).meth1.then_return(1)
+			assert obj.meth1() == 1
+			stub(obj).meth2.and_return(2)
+			assert obj.meth2() == 2
+			replace(obj).attr = 3
+			assert obj.attr == 3
+		self.assertEquals(_dir(object), [])
+	
 	@passing
 	def test_calling_with_incorrect_number_of_args_should_raise_TypeError(self):
 		when(obj).meth().then_return(True)
 		assert obj.meth() == True
-		self.assertRaises(TypeError, lambda: obj.meth2(1))
+		self.assertRaises(TypeError, lambda: obj.meth(1))
 
 	@passing
 	def test_leaving_out_parens_matches_any_args(self):
@@ -170,6 +185,32 @@ class TestMatchers(TestCase):
 		assert obj.foo() == True
 		assert obj.foo(x=1, y=2) == True
 		self.assertRaises(TypeError, lambda: obj.foo(1, 2, x=3))
+	
+	@passing
+	def test_matching_only_some_kwargs(self):
+		when(obj).foo(**kwargs_containing(x=1)).then_return(True)
+		assert obj.foo(x=1)
+		assert obj.foo(x=1, y=2)
+		self.assertRaises(TypeError, lambda: obj.foo(x=3))
+	
+	@passing
+	def test_using_splats_is_enforced_for_kwargs(self):
+		self.assertRaises(RuntimeError,
+			lambda: when(obj).foo(kwargs_containing(x=1)),
+			message="KwargsMatcher instance used without prefixing with '**'")
+
+	@passing
+	def test_using_splats_is_enforced_for_args(self):
+		self.assertRaises(RuntimeError,
+			lambda: when(obj).foo(args_containing(1)),
+			message="SplatMatcher instance used without prefixing with '*'")
+
+	@passing
+	def test_matching_only_some_args(self):
+		when(obj).foo(*args_containing(1,2)).then_return(True)
+		assert obj.foo(1,4,3,2)
+		assert obj.foo(1,2)
+		self.assertRaises(TypeError, lambda: obj.foo(1))
 
 	@passing
 	def test_any_args_at_all(self):
@@ -185,9 +226,9 @@ class TestMatchers(TestCase):
 		when(obj).foo(Any(int)).then_return(True)
 		assert obj.foo(1)
 		assert obj.foo(2)
-		self.assertRaises(TypeError, obj.foo('str'))
-		self.assertRaises(TypeError, obj.foo(int))
-		self.assertRaises(TypeError, obj.foo(1,2))
+		self.assertRaises(TypeError, lambda: obj.foo('str'))
+		self.assertRaises(TypeError, lambda: obj.foo(int))
+		self.assertRaises(TypeError, lambda: obj.foo(1,2))
 
 	@passing
 	def test_multiple_any_instance(self):
@@ -196,17 +237,27 @@ class TestMatchers(TestCase):
 		assert obj.foo(2)
 		assert obj.foo()
 		assert obj.foo(1,2,3,4)
-		self.assertRaises(TypeError, obj.foo('str'))
-		self.assertRaises(TypeError, obj.foo(int))
+		self.assertRaises(TypeError, lambda: obj.foo('str'))
+		self.assertRaises(TypeError, lambda: obj.foo(int))
 
 	@passing
 	def test_multiple_any_instance_after_normal_args(self):
 		when(obj).foo(Any(str), *Any(int)).then_return(True)
 		assert obj.foo('str')
 		assert obj.foo('string', 2)
-		assert obj.foo(1,2,3,4)
-		self.assertRaises(TypeError, obj.foo())
-		self.assertRaises(TypeError, obj.foo(int))
+		self.assertRaises(TypeError, lambda: obj.foo(1,2,3,4))
+		self.assertRaises(TypeError, lambda: obj.foo())
+		self.assertRaises(TypeError, lambda: obj.foo(int))
+
+	##TODO: this should work in py3k?
+	#@passing
+	#def test_splat_in_amongst_normal_matchers(self):
+	#	when(obj).foo(1, 2, *Any(int), 3, 4, 5).then_return(True)
+	#	assert obj.foo(1,2,3,4,5)
+	#	assert obj.foo(1,2,0,0,0,3,4,5)
+	#	self.assertRaises(TypeError, lambda: obj.foo(1,2,3,4,4,5))
+	#	self.assertRaises(TypeError, lambda: obj.foo())
+	#	self.assertRaises(TypeError, lambda: obj.foo(int))
 
 class TestMockCreation(TestCase):
 	@passing
@@ -251,8 +302,9 @@ class TestMockCreation(TestCase):
 
 class CallInspection(TestCase):
 	@passing
+	@pending("not sure how recursive stubs are to work yet")
 	def test_inspect_calls(self):
-		obj = stub('foo')
+		obj = mock('foo')
 		obj.a()
 		obj.b(1,2,3)
 		obj.c(1,2,3,x=1)
