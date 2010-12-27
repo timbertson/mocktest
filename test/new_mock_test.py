@@ -1,4 +1,5 @@
 from mocktest import *
+from mocktest.transaction import MockTransaction
 from unittest import TestCase
 import unittest
 from functools import wraps
@@ -98,25 +99,31 @@ class TestMockingCalls(TestCase):
 
 class TestMockingSpecialMethods(TestCase):
 	@passing
-	@pending
 	def test_mocking_call(self):
 		self.assertRaises(TypeError, lambda: obj())
-		when(obj)(2).then_return('two')
+		when(obj).__call__(2).then_return('two')
 		when(obj).__call__(3).then_return('three')
 		assert obj(2) == 'two'
 		assert obj(3) == 'three'
 	
+	def test_mocking_special_methods_should_revert_class_heirarchies(self):
+		with MockTransaction:
+			when(obj).__call__(2).then_return('two')
+			assert obj(2) == 'two'
+			print type(obj)
+			assert type(obj) is not Object
+			assert isinstance(obj, Object)
+		assert type(obj) is Object
+	
 	@passing
-	@pending
 	def test_mocking_length(self):
 		when(obj).__len__().then_return(2)
 		assert len(obj) == 2
 	
 	@passing
 	def test_mocking_special_methods_on_class_directly(self):
-		when(Object).__len__.then_return(5)
+		when(Object).__len__().then_return(5)
 		assert len(obj) == 5
-	
 	
 class TestExpectations(TestCase):
 	@passing
@@ -286,7 +293,7 @@ class TestMockCreation(TestCase):
 				raise RuntimeError("shouldn't actually be called!")
 
 		base = Base()
-		obj = mock('foo', create_on_access=False)
+		obj = mock('foo', create_unknown_children=False)
 		modify(obj).copying(base).children(x=1)
 		assert obj.three_args(1,2,3) == None
 		assert obj._private() == None

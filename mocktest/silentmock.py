@@ -6,7 +6,7 @@ inspected passing the silent mock into a MockWrapper object.
 
 from lib.realsetter import RealSetter
 from lib.singletonclass import SingletonClass
-from callrecord import CallRecord
+from callrecord import Call
 from mockerror import MockError
 
 DEFAULT = object()

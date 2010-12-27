@@ -1,32 +1,9 @@
 from matchers import Matcher, SplatMatcher
+from mockerror import MockError
+from transaction import MockTransaction
+
+from lib.singletonclass import ensure_singleton_class
 __unittest = True
-
-class MockTransaction(object):
-	teardown_actions = None
-	started = False
-	@classmethod
-	def add_teardown(cls, func):
-		cls.teardown_actions.append(func)
-	
-	@classmethod
-	def __enter__(cls):
-		assert not cls.started, "MockTransaction started while already in progress!"
-		cls.teardown_actions = []
-		cls.started = True
-
-	@classmethod
-	def __exit__(cls, *optional_err_info):
-		errors = []
-		for action in reversed(cls.teardown_actions):
-			try:
-				action()
-			except StandardError, e:
-				errors.append(e)
-		cls.teardown_actions = None
-		cls.started = False
-		if errors:
-			raise AssertionError("Errors occurred during mocktest cleanup:\n%s" % ("\n".join(errors),))
-		return False
 
 def when(obj):
 	return GetWrapper(lambda name: mock_when(obj, name))
@@ -37,8 +14,8 @@ def expect(obj):
 def stub(obj):
 	return GetWrapper(lambda name: mock_stub(obj, name))
 
-def mock(name, create_on_access=True):
-	return RecursiveStub(name, create_on_access)
+def mock(name, create_unknown_children=True):
+	return RecursiveStub(name, create_unknown_children)
 
 def modify(obj):
 	replacements = []
@@ -110,6 +87,11 @@ class RecursiveAssignmentWrapper(RealSetter):
 		return val
 
 class GetWrapper(object):
+	"""
+	An intermediate object that calls its callback when an attribute
+	is accesses (via __getattr__).
+	Can only be used once, or it throws an error
+	"""
 	def __init__(self, callback):
 		self._callback = callback
 		self._used = False
@@ -120,19 +102,25 @@ class GetWrapper(object):
 		return self._callback(name)
 	
 class Object(object):
+	"""a named object"""
 	def __init__(self, name="unnamed object"):
 		self.__name = name
 	def __repr__(self): return "<#%s: %s>" % (type(self).__name__, self.__name)
 	def __str__(self): return self.__name
 
 class RecursiveStub(Object):
-	def __init__(self, name="unnamed object", create_on_access=True):
+	"""
+	an object that returns new instances of itself when attributes
+	are accessed.
+	Returns None (and saves the call information) when called
+	"""
+	def __init__(self, name="unnamed object", create_unknown_children=True):
 		self.received_calls = []
 		super(RecursiveStub, self).__init__(name)
-		self._create_on_access = create_on_access
+		self._create_unknown_children = create_unknown_children
 
 	def __getattr__(self, name):
-		if not self._create_on_access:
+		if not self._create_unknown_children:
 			return super(RecursiveStub, self).__getattr__(name)
 		obj = RecursiveStub(name=name)
 		setattr(self, name, obj)
@@ -173,6 +161,10 @@ class Call(object):
 
 def stub_method(obj, name):
 	assert MockTransaction.started
+	if _special_method(name) and not isinstance(obj, type):
+		print "special method: %s"% (name,)
+		ensure_singleton_class(obj)
+		obj = type(obj)
 	add_teardown_for_attr(obj, name)
 	try:
 		old_attr = getattr(obj, name)
@@ -336,7 +328,7 @@ class MockAct(object):
 		
 	def __assert_not_set(self, var, msg="this value"):
 		if var is not None:
-			raise ValueError, "%s has already been set" % (msg,)
+			raise MockError("%s has already been set" % (msg,))
 
 	def _match_or_equal(self, expected, actual):
 		if isinstance(expected, Matcher):

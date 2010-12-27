@@ -1,15 +1,10 @@
 import sys, traceback, os
 
-class CallRecord(object):
+class Call(object):
 	def __init__(self, args, kwargs, stack = True):
-		self.raw_tuple = (args, kwargs)
+		self.tuple = (args, kwargs)
 		self.args = args if len(args) > 0 else None
 		self.kwargs = kwargs if len(kwargs) > 0 else None
-
-		if self.kwargs is None:
-			self.tuple = self.args
-		else:
-			self.tuple = (self.args, self.kwargs)
 
 		if stack is True:
 			self._stack = traceback.extract_stack(sys._getframe())
@@ -26,20 +21,24 @@ class CallRecord(object):
 		
 	def __eq__(self, other):
 		other_tuple = None
-		if isinstance(other, self.__class__):
+		if isinstance(other, type(self)):
 			other_tuple = other.tuple
 		else:
 			other_tuple = other
 		return self.tuple == other_tuple
 	
-	def is_empty(self):
-		return self.tuple is None
+	@property
+	def empty(self):
+		return self.tuple == ((), {})
 	
-	def __repr__(self):
-		return repr(self.tuple)
+	def __ne__(self, other):
+		return not self.__eq__(other)
+
+	def play(self, function):
+		return function(*self.args, **self.kwargs)
 	
 	def __str__(self):
-		if self.is_empty():
+		if self.empty:
 			arg_desc = "No arguments"
 		else:
 			sep = ', '
