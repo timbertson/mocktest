@@ -117,7 +117,6 @@ def ignore(function, reason = None):
 	@wraps(function)
 	def actually_call_it(*args, **kwargs):
 		print >> sys.stderr, "[[[ IGNORED ]]]%s ... " % (reason_str,)
-		print "[[[ IGNORED ]]]%s ... " % (reason_str,)
 	return actually_call_it
 
 class TestCase(unittest.TestCase):
@@ -299,12 +298,10 @@ class TestCase(unittest.TestCase):
 				result.addError(self, self._exc_info())
 
 			try:
-				print "TEARING DOWN"
 				self.tearDown()
 			except self.failureException:
 				# ignore this failure if the test already failed
 				if ok:
-					print "ADDING FAIL"
 					result.addFailure(self, self._exc_info())
 					ok = False
 			except KeyboardInterrupt:

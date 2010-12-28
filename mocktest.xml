@@ -8,10 +8,9 @@
 	<homepage>http://gfxmonk.net/dist/doc/mocktest/doc/</homepage>
 
 	<group main="mocktest">
-		<implementation id="sha1new=4b4c1f56d53bb8f16ef6b182e7f6c90e62b3aae8" released="2010-12-28" version="0.5">
-		
-    <manifest-digest sha256="97baab0aaa7aff4758c2f7a45ffbe6c89d492b4dc2635feb7b33de9bb4f660c3"/>
-    <archive href="http://gfxmonk.net/dist/0install/mocktest/mocktest-0.5.tgz" size="43051"/>
+		<implementation id="sha1new=27400f04ba5ce52819d2a8d961ed6980d76bacb7" released="2010-12-28" version="0.5">
+    <manifest-digest sha256="8b9fa73de604109266b5f71cc844ac28c43d07659c1d4fc563816c52f39a1472"/>
+    <archive href="http://gfxmonk.net/dist/0install/mocktest/mocktest-0.5.tgz" size="42979"/>
   </implementation>
 	</group>
 </interface>

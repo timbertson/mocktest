@@ -109,7 +109,6 @@ class RecursiveAssignmentWrapper(RealSetter):
 		return self
 
 	def __setattr__(self, name, val):
-		print repr(name)
 		self._real_set(**{name:val})
 		return self._callback(name, val)
 
