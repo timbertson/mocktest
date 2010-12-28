@@ -9,7 +9,6 @@ __unittest = True
 __all__ = [
 	'when',
 	'expect',
-	'stub',
 	'mock',
 	'modify',
 ]
@@ -20,11 +19,15 @@ def when(obj):
 def expect(obj):
 	return GetWrapper(lambda name: mock_expect(obj, name))
 
-def stub(obj):
-	return GetWrapper(lambda name: mock_stub(obj, name))
-
-def mock(name='unnamed mock', create_unknown_children=True):
-	return RecursiveStub(name, create_unknown_children)
+def mock(name='unnamed mock', create_children=True):
+	"""
+	:param name: the name of this mock object
+	:param create_children: when attributes are accessed on this
+	Make a mock object.
+	mock, they will be created by default. Set this to False to
+	raise an AttributeError instead
+	"""
+	return RecursiveStub(name, create_children)
 
 def modify(obj):
 	replacements = []
@@ -50,9 +53,6 @@ def add_teardown_for_attr(obj, attr):
 
 
 def mock_when(obj, name):
-	return stub_method(obj, name)._new_act(name)
-
-def mock_stub(obj, name):
 	return stub_method(obj, name)._new_act(name).at_least(0).times()
 
 def mock_expect(obj, name):
@@ -159,33 +159,33 @@ def stub_method(obj, name):
 
 class StubbedMethod(object):
 	def __init__(self, name):
-		self.acts = []
-		self.name = name
-		self.calls = []
+		self._acts = []
+		self._name = name
+		self.received_calls = []
 		MockTransaction.add_teardown(self._verify)
 	
 	def __repr__(self):
-		return "stubbed method %r" %(self.name,)
+		return "stubbed method %r" %(self._name,)
 	
 	def _new_act(self, name):
 		act = MockAct(name)
-		self.acts.append(act)
+		self._acts.append(act)
 		return act
 	
 	def __call__(self, *a, **kw):
 		call = Call(a, kw, stack=True)
-		self.calls.append(call)
-		for act in reversed(self.acts):
+		self.received_calls.append(call)
+		for act in reversed(self._acts):
 			if act._matches(call):
 				return act._act_upon(call)
 		else:
-			act_condition_descriptions = ["   - " + act.condition_description for act in self.acts]
-			raise TypeError("stubbed method %r received unexpected arguments: %s\nAllowable argument conditions are:\n%s" % (self.name, call.desc(),"\n".join(act_condition_descriptions)))
+			act_condition_descriptions = ["   - " + act.condition_description for act in self._acts]
+			raise TypeError("stubbed method %r received unexpected arguments: %s\nAllowable argument conditions are:\n%s" % (self._name, call.desc(),"\n".join(act_condition_descriptions)))
 
 	def _verify(self):
-		for act in self.acts:
-			if not act._satisfied_by(self.calls):
-				raise AssertionError(act.summary(False, self.calls))
+		for act in self._acts:
+			if not act._satisfied_by(self.received_calls):
+				raise AssertionError(act.summary(False, self.received_calls))
 
 class NoopDelegator(object):
 	def __init__(self, delegate):
@@ -380,7 +380,7 @@ class MockAct(object):
 			'' if call_list is None else "received " + self.describe_reality(call_list))
 
 	def __repr__(self):
-		return self.summary()
+		return "Stubbed method %r" % (self._name,)
 		
 	# fluffy user-visible expectation descriptions
 	def describe(self):

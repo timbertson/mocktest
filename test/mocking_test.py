@@ -55,7 +55,7 @@ class TestMockingCalls(TestCase):
 		with MockTransaction:
 			when(obj).meth1.then_return(1)
 			assert obj.meth1() == 1
-			stub(obj).meth2.and_return(2)
+			expect(obj).meth2.and_return(2)
 			assert obj.meth2() == 2
 			modify(obj).attr = 3
 			assert obj.attr == 3
@@ -152,8 +152,8 @@ class TestExpectations(TestCase):
 	
 	@passing
 	def test_receiving_any_number_of_times(self):
-		stub(obj).meth()
-		stub(obj).meth(1).and_return(1)
+		when(obj).meth()
+		when(obj).meth(1).then_return(1)
 		assert obj.meth() == None
 		assert obj.meth() == None
 		assert obj.meth(1) == 1
