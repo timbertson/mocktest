@@ -151,7 +151,7 @@ class TestAutoSpecVerification(unittest.TestCase):
 				e = e_
 
 			self.assertFalse(e is None, "no exception was raised")
-			self.assertEqual(e.message, "Mock transaction has not been started. Make sure you are inheriting from mocktest.TestCase")
+			self.assertEqual(str(e), "Mock transaction has not been started. Make sure you are inheriting from mocktest.TestCase")
 			self.assertEqual(e.__class__, AssertionError)
 		finally:
 			core._setup()
@@ -159,10 +159,11 @@ class TestAutoSpecVerification(unittest.TestCase):
 	def test_expectation_errors_should_be_failures(self):
 		class myTest(mocktest.TestCase):
 			def test_a(self):
-				foo = mocktest.mock()
-				foo.expects('blah').once()
+				foo = mock()
+				expect(foo).blah.once()
 		results = self.run_suite(myTest)
 		self.assertEqual(1, results.testsRun)
+		assert len(results.errors) == 0, results.errors
 		self.assertEqual(1, len(results.failures))
 		self.assertEqual(0, len(results.errors))
 
@@ -397,13 +398,14 @@ class Mystr(object):
 	
 	def __str__(self):
 		return "STRING:%s" % self.s
+
+
 foo = Mystr("blah")
 class TestFailuresDontAffectSuccessiveTests(unittest.TestCase):
 	def test_failures_dont_affect_successive_tests(self):
 		class InnerTest(mocktest.TestCase):
 			def test_one(self):
-				mocktest.mock_on(foo).split.is_expected.with_('a')
-				foo.split('x')
+				expect(foo).split('a')
 	
 			def test_two(self):
 				print foo
@@ -413,6 +415,7 @@ class TestFailuresDontAffectSuccessiveTests(unittest.TestCase):
 		suite = unittest.makeSuite(InnerTest)
 		result = unittest.TestResult()
 		suite.run(result)
+		assert len(result.errors) == 0, result.errors[0][1]
 		self.assertEqual(len(result.errors), 0)
 		self.assertEqual(len(result.failures), 1)
 		self.assertEqual(result.testsRun, 2)

@@ -293,10 +293,12 @@ class TestCase(unittest.TestCase):
 				result.addError(self, self._exc_info())
 
 			try:
+				print "TEARING DOWN"
 				self.tearDown()
 			except self.failureException:
 				# ignore this failure if the test already failed
 				if ok:
+					print "ADDING FAIL"
 					result.addFailure(self, self._exc_info())
 					ok = False
 			except KeyboardInterrupt:
