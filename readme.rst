@@ -14,15 +14,17 @@ The main features are:
 
 It's released under the GPLv3 licence (see the LICENCE file).
 
-| Source / Readme / Issues:
-| http://github.com/gfxmonk/mocktest/tree/master
+Source / Readme / Issues:
+http://github.com/gfxmonk/mocktest/tree/master
 
-| Zero install feed:
-| http://gfxmonk.net/dist/0install/mocktest.xml
-| (this is the preferred distribution method)
 
-| Cheese shop entry:
-| http://pypi.python.org/pypi/mocktest
+Zero install feed:
+http://gfxmonk.net/dist/0install/mocktest.xml
+(this is the preferred distribution method)
+
+
+Cheese shop entry:
+http://pypi.python.org/pypi/mocktest
 
 
 Documentation
