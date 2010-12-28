@@ -1,15 +1,7 @@
 """
-mocktest includes:
-
- - TestCase: a subclass of unittest.TestCase with the following additions:
-	- core._setup and _teardown are automatically called between tests,
-	  ensuring that expectations on mock objects are always checked
-	- enhanced versions of assertTrue / False, assertRaises
-
- - pending annotation: the test case is run but is allowed to fail
- - ignore annotation: the test case is not run
+Test Infrastructure
+-------------------
 """
-
 __all__ = (
 	'TestCase',
 	'pending',
@@ -59,6 +51,10 @@ def subclass_only(parent, method_names, safe_superclasses=()):
 	return cls
 
 def Skeleton(cls):
+	"""
+	Generate a subclass inheriting only private methods and setUp/tearDown, for the purpose
+	of inheriting test setup but not any actual test implementations
+	"""
 	import mocktest
 	return subclass_only(cls, ('setUp', 'tearDown'), safe_superclasses=(unittest.TestCase, object, mocktest.TestCase))
 
@@ -92,6 +88,11 @@ class ParamDecorator(object):
 
 @ParamDecorator
 def pending(function, reason = None):
+	"""
+	A decorator for pending tests.
+	Note that pending tests are always run, and will cause a failure if they succeed (a pending test is assumed to be in a failing state.
+	To not run a test at all. use :py:func:mocktest.ignore:
+	"""
 	reason_str = "" if reason is None else " (%s)" % reason
 	@wraps(function)
 	def actually_call_it(*args, **kwargs):
@@ -111,6 +112,7 @@ def pending(function, reason = None):
 
 @ParamDecorator
 def ignore(function, reason = None):
+	"""a decorator for tests that should not be run"""
 	reason_str = "" if reason is None else " (%s)" % reason
 	@wraps(function)
 	def actually_call_it(*args, **kwargs):
@@ -119,6 +121,14 @@ def ignore(function, reason = None):
 	return actually_call_it
 
 class TestCase(unittest.TestCase):
+	"""
+	A subclass of unittest.TestCase with the following additions:
+
+	- Automatically calls MockTransaction.__enter__ and __exit__ in \
+		order to reset mock state and verify expectations upon test \
+		completion.
+	- enhanced versions of assertTrue / False, assertRaises
+	"""
 	pending = globals()['pending']
 	ignore = globals()['ignore']
 	def __init__(self, methodName = 'runTest'):
@@ -155,10 +165,6 @@ class TestCase(unittest.TestCase):
 			super(TestCase, self).assertFalse(expr, desc)
 	
 	def assertEqual(self, a, b, desc = None):
-		"""
-		Enhanced assertEquals, prints out more information when
-		comparing two dicts or two arrays
-		"""
 		if a == b:
 			return
 		if desc is not None:
@@ -265,7 +271,7 @@ class TestCase(unittest.TestCase):
 	
 	def run(self, result=None):
 		"""
-		this is (mostly) the default implementation of unittest.run
+		This is (mostly) the default implementation of unittest.run
 		the only modification is that a `self.FailureException` raised
 		in the teardown method counts for a failure
 		"""

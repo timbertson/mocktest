@@ -1,10 +1,22 @@
+"""
+Type matchers
+-------------
+.. data:: any_string
+.. data:: any_int
+.. data:: any_float
+.. data:: any_dict
+.. data:: any_list
+
+.. function:: object_with(attribute_name)
+Match an object that has an attribute named `attribute_name`.
+
+"""
 __all__ = [
 	'any_string',
 	'any_int',
 	'any_float',
 	'any_dict',
 	'any_list',
-	'any_',
 	'object_with'
 ]
 
@@ -30,7 +42,6 @@ class ObjectWithAttribute(Matcher):
 	def desc(self):
 		return "any object with attribute \"%s\"" % (self.attr_name,)
 
-any_ = TypeMatcher
 any_string = TypeMatcher(str)
 any_int = TypeMatcher(int)
 any_float = TypeMatcher(float)

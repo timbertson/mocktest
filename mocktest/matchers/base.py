@@ -1,9 +1,39 @@
-__all__ = ['Matcher', 'Any', 'Not', 'SplatMatcher']
+"""
+Basic Matchers
+--------------
+
+.. data:: Any
+A matcher instance that matches any object.
+If called with a type, e.g.:
+	>>> Any(int)
+
+It returns a matcher for any instance of that type.
+
+.. data:: _any
+Alias for :data:`Any`
+
+
+.. function:: Not(matcher)
+Call with a matcher to return a matcher inverting the logic of tha passed-in matcher.
+e.g.:
+	>>> Not(Any(str))
+
+Would match anything that isn't a string instance.
+
+.. data:: _not
+Alias for :data:`Not`
+"""
+
+__all__ = ['Matcher', 'Any', 'any_', 'Not', 'not_', 'SplatMatcher', 'KwargsMatcher', 'matcher']
 
 class Matcher(object):
+	"""
+	Base matcher class
+	"""
 	_desc = 'unnamed matcher'
 
 	def desc(self):
+		"""return a description of this matcher"""
 		return self._desc
 
 	def __str__(self):
@@ -19,8 +49,9 @@ class Matcher(object):
 	def __getitem__(self, name):
 		return None
 
-	def items(self):
-		return ('x',1)
+	def matches(self, obj):
+		"""return True if this matcher is satisfied by the given object, else False"""
+		raise AssertionError("matcher has not overidden `matches`!")
 
 class NegatedMatcher(Matcher):
 	def __init__(self, orig):
@@ -35,18 +66,15 @@ class NegatedMatcher(Matcher):
 		return 'not %s' % (self.orig.desc(),)
 
 def matcher(matches, desc = 'anonymous matcher'):
+	"""
+	Create a matcher
+
+	:param matches: given one argument (the subject), this function should return either True or False
+	:type matches: callable
+	:param desc: Human readable desription of this matcher's logic, e.g "a positive number"
+	"""
 	return type('Matcher', (Matcher,), {'matches':matches, 'desc': lambda self: desc})()
 
-
-class AnyInstanceOf(Matcher):
-	def __init__(self, cls):
-		self._cls = cls
-
-	def desc(self):
-		return "any instance of %r" % (self._cls,)
-
-	def matches(self, other):
-		return isinstance(other, self._cls)
 
 class SplatMatcherMaker(Matcher):
 	def __init__(self, matcher):
@@ -77,11 +105,17 @@ class ElementWiseSplatMatcher(SplatMatcher):
 		return "each argument is [%r]" % (self._matcher.desc(),)
 
 class AnyObject(Matcher, dict):
+	"""Matches any object.
+	If called and given a type, returns a :py:class:mocktest.matchers.type_matcher.TypeMatcher: instance for that type
+	"""
 	def __init__(self):
 		dict.__init__(self, __kwargs=self)
 
-	def __call__(self, cls):
-		return AnyInstanceOf(cls)
+	def __call__(self, cls=None):
+		if cls is None:
+			return self
+		from type_matcher import TypeMatcher
+		return TypeMatcher(cls)
 
 	def matches(self, other):
 		return True
@@ -102,5 +136,7 @@ kwargs_with = KwargsMatcher
 args_with = SplatMatcherMaker
 
 Not = NegatedMatcher
+not_ = NegatedMatcher
 
 Any = AnyObject()
+any_ = Any

@@ -299,7 +299,7 @@ class TestMockCreation(TestCase):
 				raise RuntimeError("shouldn't actually be called!")
 
 		base = Base()
-		obj = mock('foo', create_unknown_children=False)
+		obj = mock('foo', False)
 		modify(obj).copying(base).children(x=1)
 		assert obj.three_args(1,2,3) == None
 		assert obj._private() == None

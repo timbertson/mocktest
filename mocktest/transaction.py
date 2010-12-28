@@ -1,8 +1,18 @@
+"""
+Mock Transaction
+----------------
+"""
 from mockerror import MockError
 
 __unittest = True
 
 class MockTransaction(object):
+	"""
+	A context manager to encapsulate a single mocktest transaction.
+
+	**Note**: this is a global context manager - you
+	cannot have more than one.
+	"""
 	teardown_actions = None
 	started = False
 	@classmethod
@@ -11,12 +21,14 @@ class MockTransaction(object):
 	
 	@classmethod
 	def __enter__(cls):
+		"""begin a new transaction"""
 		if cls.started: raise MockError("MockTransaction started while already in progress!")
 		cls.teardown_actions = []
 		cls.started = True
 
 	@classmethod
 	def __exit__(cls, *optional_err_info):
+		"""end the current transaction, resetting all mocks and verifying all expectations"""
 		if not cls.started: raise MockError("MockTransaction is not in progress!")
 		errors = []
 		for action in reversed(cls.teardown_actions):

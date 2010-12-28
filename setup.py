@@ -4,12 +4,11 @@ from setuptools import *
 
 setup(
 	name='mocktest',
-	version='0.3.1',
+	version='0.5',
 	description='a mocking and expectation test library for python, inspired by rspec',
 	author='Tim Cuthbertson',
 	author_email='tim3d.junk+mocktest@gmail.com',
-	url='http://github.com/gfxmonk/mocktest/tree',
-	packages=find_packages(exclude=["test"]),
+	url='http://gfxmonk.net/dist/0install/mocktest.xml',
 	
 	long_description="""\
 	mocktest is a mocking and expectation test library for python.
@@ -26,7 +25,7 @@ setup(
 		"Topic :: Software Development :: Testing",
 	],
 	keywords='test mock expect expectation stub rspec unittest',
-	license='BSD',
+	license='GPLv3',
 	install_requires=[
 		'setuptools',
 	],

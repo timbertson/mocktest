@@ -1,3 +1,7 @@
+"""
+Mock Objects
+------------
+"""
 from matchers import Matcher, SplatMatcher
 from mockerror import MockError
 from callrecord import Call
@@ -14,22 +18,42 @@ __all__ = [
 ]
 
 def when(obj):
+	"""
+	Replace a method on an object. Just like `expect`, except
+	that no verification against the number of calls received
+	will be performed.
+	"""
 	return GetWrapper(lambda name: mock_when(obj, name))
 
 def expect(obj):
+	"""
+	Add an expectation to a method of `obj`.
+	By default, the method is expected at least once.
+	E.g:
+		>>> expect(some_object).method
+	"""
 	return GetWrapper(lambda name: mock_expect(obj, name))
 
 def mock(name='unnamed mock', create_children=True):
 	"""
+	Make a mock object.
+
 	:param name: the name of this mock object
 	:param create_children: when attributes are accessed on this
-	Make a mock object.
-	mock, they will be created by default. Set this to False to
-	raise an AttributeError instead
+		mock, they will be created by default. Set this to False to
+		raise an AttributeError instead
 	"""
 	return RecursiveStub(name, create_children)
 
 def modify(obj):
+	"""
+	Replace children of an existing object for the duration of
+	this test. E.g:
+		>>> modify(obj).child = replacement_child
+		>>> modify(obj).grand.child = replacement_grand_child
+	
+	All replaced attributes will be reverted when the test completes.
+	"""
 	replacements = []
 	def replace_(name, val):
 		replace_attr(obj, name, val, generate_reset=len(replacements)==0)
@@ -296,16 +320,6 @@ class MockAct(object):
 		"""alias for exactly(3).times"""
 		return self.exactly(3)
 	
-	# overloading
-	def __eq__(self, other):
-		"""
-		overloaded operator for comparing to True or False
-		"""
-		return self._matches() == other
-	
-	def __nonzero__(self):
-		return self._matches()
-		
 	def __assert_not_set(self, var, msg="this value"):
 		if var is not None:
 			raise MockError("%s has already been set" % (msg,))
@@ -405,16 +419,15 @@ class MockAct(object):
 		self._action = lambda *a, **k: val
 		return self
 	then_return = and_return
-	returning = and_return
 	
 	def and_call(self, func):
 		self._action = func
 		return self
 	then_call = and_call
-	calling = and_call
 
 	def and_raise(self, exc):
 		def _do_raise(*a, **kw):
 			raise exc
 		self._action = _do_raise
 		return self
+	then_raise = and_raise

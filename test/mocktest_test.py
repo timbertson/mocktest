@@ -4,7 +4,6 @@ import sys
 import os
 
 import mocktest
-import unittest
 from mocktest import core, modify, when, MockTransaction, mock, expect, ignore, pending
 
 def assert_desc(expr):
@@ -303,19 +302,6 @@ class TestAutoSpecVerification(unittest.TestCase):
 			s.assertRaises(RuntimeError, self.make_error, matches='^a')
 		result = self.run_method(test_raise_mismatch_regex)
 		self.assertFalse(result.wasSuccessful())
-
-	def test_expectation_formatting(self):
-		m = mock()
-		expectation = expect(m).__call__('foo', bar=1).twice()
-		m('foo', bar=1)
-		m('foo', bar=1)
-
-		self.assertEqual(
-			repr(expectation).strip(),
-			'\n'.join([
-				'Mock "__call__" has not yet checked expectations:',
-				' expected exactly 2 calls with arguments equal to: (\'foo\', bar=1)'])
-		)
 	
 	def test_reality_formatting(self):
 		core._teardown()

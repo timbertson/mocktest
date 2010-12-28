@@ -1,8 +1,28 @@
+"""
+Call Records
+------------
+"""
 import sys, traceback, os
 
 __all__ = ['Call']
 
 class Call(object):
+	"""
+	An encapsulation of call arguments.
+	Can compare for equality with a tuple of
+	(args, kwargs), e.g:
+
+		>>> Call.like(1,2,3, x=4) == ((1,2,3), {'x':4})
+		True
+	
+	:param args: non-keyword arguments
+	:type args: tuple
+	:param kwargs: keyword arguments
+	:type kwargs: dict
+	:param stack: If True, a stack trace is captured for reporting \
+	where a given call was made.
+	:members: args, kwargs
+	"""
 	def __init__(self, args, kwargs, stack = False):
 		self.tuple = (args, kwargs)
 		self.args = args
@@ -13,6 +33,7 @@ class Call(object):
 
 	@classmethod
 	def like(cls, *a, **kw):
+		"""capture a call with the given arguments"""
 		return cls(a, kw)
 
 	def _concise_stack(self):
@@ -25,6 +46,9 @@ class Call(object):
 		file_ = os.path.basename(file_)
 		return "%s:%-3s :: %s" % (file_, line, code)
 		
+	def __hash__(self):
+		return hash(self.tuple)
+
 	def __eq__(self, other):
 		other_tuple = None
 		if isinstance(other, type(self)):
@@ -41,7 +65,7 @@ class Call(object):
 		return not self.__eq__(other)
 
 	def play(self, function):
-		print repr((self.args, self.kwargs))
+		"""apply this call's arguments to the given callable"""
 		return function(*self.args, **self.kwargs)
 
 	def desc(self, include_stack=False):
@@ -60,4 +84,7 @@ class Call(object):
 
 	def __str__(self):
 		return self.desc(include_stack=True)
+
+	def __repr__(self):
+		return "<#Call: %r>" % (self.tuple,)
 
