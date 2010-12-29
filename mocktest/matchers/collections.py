@@ -3,21 +3,26 @@ Collection Matchers
 -------------------
 
 .. function:: any_of(*elements)
-Matches an argument if it is any of the listed elements
+
+	Matches an argument if it is any of the listed elements
 
 .. function:: object_containing(*elements)
-Matches an object that includes all given elements.
+
+	Matches an object that includes all given elements.
 
 .. function:: args_containing(*args)
-Just like :func:`object_containing`, but used for matching args. E.g:
-	>>> expect(obj).meth(*args_containing(2, 3))
+
+	Just like :func:`object_containing`, but used for matching args. E.g:
+		>>> expect(obj).meth(*args_containing(2, 3))
 
 .. function:: dict_containing(**kwargs)
-Matches a mapping with at least the given keys and values.
+
+	Matches a mapping with at least the given keys and values.
 
 .. function:: kwargs_containing(**kwargs)
-Just like :func:`dict_containing`, but used for matching kwargs. E.g:
-	>>> expect(obj).meth(1, 2, 3, **kwargs_containing(do_frob=True))
+
+	Just like :func:`dict_containing`, but used for matching kwargs. E.g:
+		>>> expect(obj).meth(1, 2, 3, **kwargs_containing(do_frob=True))
 
 
 """

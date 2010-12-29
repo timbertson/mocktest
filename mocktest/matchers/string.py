@@ -3,7 +3,8 @@ String Matchers
 ---------------
 
 .. function:: string_matching(pattern)
-Takes either a string or a compiled regex pattern.
+
+	Takes either a string or a compiled regex pattern.
 """
 
 __all__ = [

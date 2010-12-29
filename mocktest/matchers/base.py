@@ -3,25 +3,29 @@ Basic Matchers
 --------------
 
 .. data:: Any
-A matcher instance that matches any object.
-If called with a type, e.g.:
-	>>> Any(int)
 
-It returns a matcher for any instance of that type.
+	A matcher instance that matches any object.
+	If called with a type, e.g.:
+		>>> Any(int)
+
+	It returns a matcher for any instance of that type.
 
 .. data:: _any
-Alias for :data:`Any`
+
+	Alias for :data:`Any`
 
 
 .. function:: Not(matcher)
-Call with a matcher to return a matcher inverting the logic of tha passed-in matcher.
-e.g.:
-	>>> Not(Any(str))
 
-Would match anything that isn't a string instance.
+	Call with a matcher to return a matcher inverting the logic of tha passed-in matcher.
+	e.g.:
+		>>> Not(Any(str))
+
+	Would match anything that isn't a string instance.
 
 .. data:: _not
-Alias for :data:`Not`
+
+	Alias for :data:`Not`
 """
 
 __all__ = ['Matcher', 'Any', 'any_', 'Not', 'not_', 'SplatMatcher', 'KwargsMatcher', 'matcher']

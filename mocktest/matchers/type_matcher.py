@@ -8,7 +8,8 @@ Type matchers
 .. data:: any_list
 
 .. function:: object_with(attribute_name)
-Match an object that has an attribute named `attribute_name`.
+
+	Match an object that has an attribute named `attribute_name`.
 
 """
 __all__ = [
