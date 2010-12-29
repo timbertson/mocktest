@@ -33,6 +33,9 @@ copy:
 clean:
 	-rm -rf $(BUILDDIR)/*
 
+0:
+	mkzero-gfxmonk -p mocktest -p setup.py mocktest.xml
+
 html:
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
 	@echo
