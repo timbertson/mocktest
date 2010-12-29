@@ -29,9 +29,9 @@ help:
 
 doc: html copy
 copy:
-	rsync -avz doc/build/html/ ~/Sites/gfxmonk/dist/doc/mocktest/
+	rsync -avz --delete doc/build/html/ ~/Sites/gfxmonk/dist/doc/mocktest/
 clean:
-	-rm -rf $(BUILDDIR)/*
+	-rm -rf $(BUILDDIR)/html/*
 
 0:
 	mkzero-gfxmonk -p mocktest -p setup.py mocktest.xml

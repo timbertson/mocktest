@@ -1,6 +1,6 @@
-mocktest
-********
-... is a powerful and easy-to-use mocking library, inspired by rspec and
+About mocktest
+**************
+mocktest is a powerful and easy-to-use mocking library, inspired by rspec and
 similar in some ways to Michael Foord's popular Mock module.
 
 The main features are:
@@ -12,9 +12,9 @@ The main features are:
  - descriptive error messages when something fails
 
 
-It's released under the BSD licence (see the LICENCE file).
+It's released under the GPLv3 licence (see the LICENCE file).
 
-| Source / Readme / Issues:
+| Source / Issues:
 | http://github.com/gfxmonk/mocktest/tree/master
 
 
@@ -31,6 +31,18 @@ API reference
 This document is an introduction, if you are looking for an API reference
 you should read the :mod:`mocktest module documentation <mocktest>`.
 
+Installation
+------------
+As mentioned above, the preferred distribution method is via `Zero Install <http://zero-install.sourceforge.net/>`_
+
+If you just want to try it out and don't want to make a feed that
+depends on mocktest, you can run::
+
+  exec `0launch http://gfxmonk.net/dist/0install/0path.xml http://gfxmonk.net/dist/0install/mocktest.xml PYTHONPATH`
+
+And your ``PYTHONPATH`` will be set up to contain ``mocktest``.
+
+(**Note**: Obviously, this requires ``0launch`` to be installed. On ubuntu, this is part of the ``zeroinstall-injector`` package)
 
 Important notes for this version
 --------------------------------
@@ -43,13 +55,14 @@ still work, they may just be written differently.
 
 Most importantly, there is no longer any distinction between a raw mock and a
 mock wrapper. Instead, mock expectations are specified by using one of the
-global functions - `expect` and `when`. The distinction turned out to be
+global functions - :func:`~mocktest.mocking.expect` and
+:func:`~mocktest.mocking.when`. The distinction turned out to be
 confusing, and made many tests awkward.
 
 Where did it come from?
 -----------------------
 I am a big fan of rspec, but less of a fan of ruby as a whole.
-I wanted a to use rspec's powerful `should_receive()` and associated matchers
+I wanted a to use rspec's powerful ``should_receive()`` and associated matchers
 with my python mock objects.
 
 mocktest is by no means a port of rspec - it is smaller and simpler, and a lot
@@ -83,12 +96,13 @@ manager directly to handle these checks for you.
 	... 	# expectations will be verified once the indented block finishes
 
 Or, if you are playing around on the console, you can manually call
-`MockTransaction.__enter__()` and `MockTransaction.__exit()` to start/end a
+``MockTransaction.__enter__()`` and ``MockTransaction.__exit()`` to start/end a
 mock transaction.
 
 There is one important addition to the :class:`~mocktest.mocktest.TestCase` class:
 
 .. automethod:: mocktest.mocktest.TestCase.assertRaises
+  :noindex:
 
 This was adapted from http://code.activestate.com/recipes/307970/
 
@@ -110,13 +124,13 @@ If you want to replace a method on an existing object, you can use :func:`~mockt
 
 	>>> when(some_object).method.then_return(True)
 
-This will ensure that `some_object.method()` always returns True (and doesn't call
-the previous implementation of `method`, if there is one). This action will
-take place regardless of the arguments passed in to `method`.
+This will ensure that ``some_object.method()`` always returns True (and doesn't call
+the previous implementation of ``method``, if there is one). This action will
+take place regardless of the arguments passed in to ``method``.
 
 To only deal with some of the calls made to method, you can specify under which
 conditions your action should occur by just passing those arguments when call the
-:func:`~mocktest.mocking.when` function's `method`. For example:
+:func:`~mocktest.mocking.when` function's ``method``. For example:
 
 	>>> when(some_object).method().then_return('no args')
 	>>> when(some_object).method(1, 2, 3).then_return('one two three')
@@ -173,14 +187,14 @@ Expecting calls
 	>>> expect(os).system
 
 This will fail your test unless os.system() is called at least once during
-the current test case (the check is made right before the `tearDown()` method
+the current test case (the check is made right before the ``tearDown()`` method
 is executed).
 
 Expecting Arguments
 ^^^^^^^^^^^^^^^^^^^
 
 | To specify what argument's you're expecting, just pass them in:
-| `expect(obj).method(<args>)`
+| ``expect(obj).method(<args>)``
 
 e.g:
 
