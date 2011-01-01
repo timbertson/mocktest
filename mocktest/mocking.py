@@ -1,7 +1,3 @@
-"""
-Mock Objects
-------------
-"""
 from matchers import Matcher, SplatMatcher
 from mockerror import MockError
 from callrecord import Call
@@ -22,6 +18,8 @@ def when(obj):
 	Replace a method on an object. Just like `expect`, except
 	that no verification against the number of calls received
 	will be performed.
+
+	:rtype: :class:`~mocktest.mocking.MockAct`
 	"""
 	return GetWrapper(lambda name: mock_when(obj, name))
 
@@ -31,6 +29,8 @@ def expect(obj):
 	By default, the method is expected at least once.
 	E.g:
 		>>> expect(some_object).method
+
+	:rtype: :class:`~mocktest.mocking.MockAct`
 	"""
 	return GetWrapper(lambda name: mock_expect(obj, name))
 
@@ -42,6 +42,7 @@ def mock(name='unnamed mock', create_children=True):
 	:param create_children: when attributes are accessed on this
 		mock, they will be created by default. Set this to False to
 		raise an AttributeError instead
+	:rtype: :class:`~mocktest.mocking.RecursiveStub`
 	"""
 	return RecursiveStub(name, create_children)
 
@@ -53,6 +54,8 @@ def modify(obj):
 		>>> modify(obj).grand.child = replacement_grand_child
 	
 	All replaced attributes will be reverted when the test completes.
+
+	:rtype: :class:`~mocktest.mocking.RecursiveAssignmentWrapper`
 	"""
 	replacements = []
 	def replace_(name, val):
@@ -87,14 +90,35 @@ def _special_method(name):
 
 from lib.realsetter import RealSetter
 class RecursiveAssignmentWrapper(RealSetter):
+	"""
+	The return value from :func:`modify`.
+
+	Assigning a value to an attribute of this object
+	assigns the same value to the original object, but
+	only for the duration of the current test.
+	"""
 	def __init__(self, callback):
 		self._real_set(_callback=callback)
 	
 	def children(self, **children):
+		"""
+		Set children via kwargs, e.g.:
+
+			>>> modify(obj).children(x=1, y='child y')
+			>>> obj.x
+			1
+			>>> obj.y
+			'child y'
+		"""
 		[setattr(self, k, v) for k, v in children.items()]
 		return self
 
 	def methods(self, **methods):
+		"""
+		Set children via kwargs, e.g.:
+
+			>>> modify(obj).children(x=1, y=mock('child y'))
+		"""
 		def do_return(return_value):
 			return lambda *a, **k: return_value
 
@@ -102,10 +126,14 @@ class RecursiveAssignmentWrapper(RealSetter):
 			setattr(self, k, do_return(v))
 		return self
 
-	def copying(self, other):
+	def copying(self, other, value=lambda *a, **kw: None):
+		"""
+		Copy all non-special attributes of `other`, setting
+		the value of each child to `value`.
+		"""
 		for attr in dir(other):
 			if _special_method(attr): continue
-			setattr(self, attr, lambda *a, **kw: None)
+			setattr(self, attr, value)
 		return self
 
 	def __setattr__(self, name, val):
@@ -143,8 +171,11 @@ class Object(object):
 
 class RecursiveStub(Object):
 	"""
-	an object that returns new instances of itself when attributes
-	are accessed.
+	The return value from :func:`mock`.
+
+	An object that returns new instances of itself when attributes
+	are accessed (unless create_unknown_children is False).
+
 	Returns None (and saves the call information) when called
 	"""
 	def __init__(self, name="unnamed object", create_unknown_children=True):
@@ -181,6 +212,16 @@ def stub_method(obj, name):
 
 
 class StubbedMethod(object):
+	"""
+	This is the type that mocktest uses as a stand-in for a replaced (stubbed) method. For example:
+		>>> when(obj).method().then_return(True)
+	
+	Will set ``obj.method`` to an instance of StubbedMethod (for the duration of the current test)
+
+	.. data:: received_calls:
+
+		The set of calls this stub has received, as a list of :class:`~mocktest.callrecord.Call` instances.
+	"""
 	def __init__(self, name):
 		self._acts = []
 		self._name = name
@@ -221,6 +262,9 @@ class NoopDelegator(object):
 		return getattr(self._delegate, attr)
 
 class MockAct(object):
+	"""
+	The return type from :func:`when` and :func:`expect`.
+	"""
 	_multiplicity = None
 	_multiplicity_description = None
 	
@@ -271,8 +315,8 @@ class MockAct(object):
 	
 	def where(self, func):
 		"""
-		restrict the checked set of function calls to those where
-		func(*args, **kwargs) is True
+		Match only when `condition_func` returns true, when called with the same
+		arguments as this method.
 		"""
 		self.__assert_not_set(self._cond_args, "argument condition")
 		self._cond_args = func
@@ -280,43 +324,47 @@ class MockAct(object):
 		return self
 
 	def exactly(self, n):
-		"""set the allowed number of calls made to this function"""
+		"""
+		Expect this act to be triggered exactly `number` times.
+		Usually followed by `times()` for readability, as in:
+			>>> expect(obj).meth.exactly(3).times()
+		"""
 		self._multiplicity = lambda x: x == n
 		self._multiplicity_description = "exactly %s" % (n,)
 		return self
 	
 	def at_least(self, n):
-		"""set the allowed number of calls made to this function"""
+		"""Expect this act to match at least `number` times."""
 		self._multiplicity = lambda x: x >= n
 		self._multiplicity_description = "at least %s" % (n,)
 		return self
 	
 	def at_most(self, n):
-		"""set the allowed number of calls made to this function"""
+		"""Expect this act to match at most `number` times."""
 		self._multiplicity = lambda x: x <= n
 		self._multiplicity_description = "at most %s" % (n,)
 		return self
 	
 	def between(self, start_range, end_range):
-		"""set the allowed number of calls made to this function"""
+		"""Expect this act to match between `lower` and `upper` times."""
 		self._multiplicity = lambda x: x >= start_range and x <= end_range
 		self._multiplicity_description = "between %s and %s" % (start_range, end_range)
 		return self
 	
 	def never(self):
-		"""alias for exactly(0).times"""
+		"""Alias for exactly(0).times"""
 		return self.exactly(0)
 		
 	def once(self):
-		"""alias for exactly(1).times"""
+		"""Alias for exactly(1).times"""
 		return self.exactly(1)
 		
 	def twice(self):
-		"""alias for exactly(2).times"""
+		"""Alias for exactly(2).times"""
 		return self.exactly(2)
 	
 	def thrice(self):
-		"""alias for exactly(3).times"""
+		"""Alias for exactly(3).times"""
 		return self.exactly(3)
 	
 	def __assert_not_set(self, var, msg="this value"):
@@ -415,16 +463,32 @@ class MockAct(object):
 		return desc
 
 	def and_return(self, val):
+		"""
+		When this act matches, return the given `result` to the caller.
+
+		**Note:** :func:`and_raise`, :func:`and_return` and :func:`and_call` each have a `then_*` alias
+		for better readability when using :func:`when`. e.g:
+
+			>>> expect(obj).foo().and_return(True)
+		
+		Is readable, however when using :func:`when`, the following is more readable:
+
+			>>> when(obj).foo().then_return(True)
+		
+		Both `and_` and `then_` versions have the same effect however.
+		"""
 		self._action = lambda *a, **k: val
 		return self
 	then_return = and_return
 	
 	def and_call(self, func):
+		"""When this act matches, call the given `func` and return its value."""
 		self._action = func
 		return self
 	then_call = and_call
 
 	def and_raise(self, exc):
+		"""When this act matches, raise the given exception instance."""
 		def _do_raise(*a, **kw):
 			raise exc
 		self._action = _do_raise

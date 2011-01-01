@@ -1,7 +1,3 @@
-"""
-Mock Transaction
-----------------
-"""
 from mockerror import MockError
 
 __unittest = True
