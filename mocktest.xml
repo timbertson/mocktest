@@ -3,6 +3,7 @@
 <interface uri="http://gfxmonk.net/dist/0install/mocktest.xml" xmlns="http://zero-install.sourceforge.net/2004/injector/interface">
 	<name>mocktest</name>
 	<summary>mocking library for python, inspired by rspec</summary>
+	<publish mode="featured" xmlns="http://gfxmonk.net/dist/0install"/>
 	<description>
 mocktest
 ********
