@@ -30,7 +30,23 @@ http://gfxmonk.net/dist/doc/mocktest/doc/
 
 	</description>
 	<homepage>http://gfxmonk.net/dist/doc/mocktest/doc/</homepage>
+	<rich-description xmlns="http://gfxmonk.net/dist/0install">
+		<div xmlns="http://www.w3.org/1999/xhtml">
+			<div id="mocktest">
+				<h1>mocktest</h1>
+				<p>... is a powerful and easy-to-use mocking library, inspired by rspec and similar in some ways to Michael Foord's popular Mock module.</p>
+				<p>Source / Issues: <a href="http://github.com/gfxmonk/mocktest/tree/master">http://github.com/gfxmonk/mocktest/tree/master</a></p>
+				<p>Zero install feed: <a href="http://gfxmonk.net/dist/0install/mocktest.xml">http://gfxmonk.net/dist/0install/mocktest.xml</a> (this is the preferred distribution method)</p>
+				<p>Cheese shop entry: <a href="http://pypi.python.org/pypi/mocktest">http://pypi.python.org/pypi/mocktest</a></p>
+				<div id="documentation-installation">
+					<h2>Documentation / Installation</h2>
+					<p>Please see the full documentation online at: <a href="http://gfxmonk.net/dist/doc/mocktest/doc/">http://gfxmonk.net/dist/doc/mocktest/doc/</a></p>
+				</div>
+			</div>
+		</div>
+	</rich-description>
 	<group>
+		<environment insert="" mode="append" name="PYTHONPATH"/>
 		<implementation id="sha1new=39bcc9635399d6c86ec30ae62400b4f2d7d5c88d" released="2010-12-29" version="0.5">
 			<manifest-digest sha256="fb7382793748e4d15df58a1ebbba44def515b36982ddaa4551868f79ebcc5fab"/>
 			<archive href="http://gfxmonk.net/dist/0install/mocktest/mocktest-0.5.tgz" size="43523"/>
