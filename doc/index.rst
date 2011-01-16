@@ -38,7 +38,7 @@ As mentioned above, the preferred distribution method is via `Zero Install <http
 If you just want to try it out and don't want to make a feed that
 depends on mocktest, you can run::
 
-  exec `0launch http://gfxmonk.net/dist/0install/0path.xml http://gfxmonk.net/dist/0install/mocktest.xml`
+  exec "`0launch http://gfxmonk.net/dist/0install/0path.xml http://gfxmonk.net/dist/0install/mocktest.xml`"
 
 And your ``PYTHONPATH`` will be set up to contain ``mocktest``.
 
