@@ -10,7 +10,7 @@ Basic Matchers
 
 	It returns a matcher for any instance of that type.
 
-.. data:: _any
+.. data:: any_
 
 	Alias for :data:`Any`
 
@@ -83,13 +83,13 @@ def matcher(matches, desc = 'anonymous matcher'):
 class SplatMatcherMaker(Matcher):
 	def __init__(self, matcher):
 		self._matcher = matcher
+	
+	def __iter__(self):
+		return iter((SplatMatcher(self._matcher),))
 
 	def matches(self, *a):
 		raise RuntimeError("SplatMatcher instance used without prefixing with '*'")
 	desc = matches
-
-	def __iter__(self):
-		return iter([SplatMatcher(self._matcher)])
 
 class SplatMatcher(object):
 	def __init__(self, matcher):
@@ -136,11 +136,9 @@ class KwargsMatcher(Matcher, dict):
 		raise RuntimeError("KwargsMatcher instance used without prefixing with '**'")
 	desc = matches
 
-kwargs_with = KwargsMatcher
-args_with = SplatMatcherMaker
-
 Not = NegatedMatcher
 not_ = NegatedMatcher
 
 Any = AnyObject()
 any_ = Any
+

@@ -14,8 +14,10 @@ These classes are not exposed for you to instantiate, but
 instances are returned instances from other (public) methods:
 
 .. autoclass:: mocktest.mocking.RecursiveStub
+	:members:
 
 .. autoclass:: mocktest.mocking.RecursiveAssignmentWrapper
+	:members:
 
 
 .. _setting-expectations:

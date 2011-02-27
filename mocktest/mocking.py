@@ -115,7 +115,7 @@ class RecursiveAssignmentWrapper(RealSetter):
 
 	def methods(self, **methods):
 		"""
-		Set children via kwargs, e.g.:
+		Set child methods via kwargs, e.g.:
 
 			>>> modify(obj).children(x=1, y=mock('child y'))
 		"""
@@ -129,7 +129,8 @@ class RecursiveAssignmentWrapper(RealSetter):
 	def copying(self, other, value=lambda *a, **kw: None):
 		"""
 		Copy all non-special attributes of `other`, setting
-		the value of each child to `value`.
+		the value of each child to `value`. The default `value` paramater
+		is a function returning `None` for all arguments.
 		"""
 		for attr in dir(other):
 			if _special_method(attr): continue

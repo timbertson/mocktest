@@ -10,6 +10,16 @@ Collection Matchers
 
 	Matches an object that includes all given elements.
 
+.. data:: any_args
+
+	like `any`, but used for a series of arguments - e.g.
+		foo(*any_args)
+
+.. data:: any_kwargs
+
+	like `any`, but used for a dict of keyword arguments - e.g.
+		foo(**any_kwargs)
+		
 .. function:: args_containing(*args)
 
 	Just like :func:`object_containing`, but used for matching args. E.g:
@@ -26,12 +36,14 @@ Collection Matchers
 
 
 """
-from base import Matcher, KwargsMatcher, SplatMatcherMaker
+from base import Matcher, KwargsMatcher, SplatMatcherMaker, Any
 __all__ = [
 	'object_containing',
 	'dict_containing',
 	'kwargs_containing',
 	'args_containing',
+	'any_kwargs',
+	'any_args',
 	'any_of',
 	]
 
@@ -81,5 +93,7 @@ dict_containing = DictIncludeMatcher
 
 kwargs_containing = lambda **k: KwargsMatcher(dict_containing(**k))
 args_containing = lambda *a: SplatMatcherMaker(object_containing(*a))
+any_args = SplatMatcherMaker(Any)
+any_kwargs = KwargsMatcher(Any)
 
 any_of = ItemMatcher

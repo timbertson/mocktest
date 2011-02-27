@@ -351,3 +351,26 @@ class TestSkeletons(TestCase):
 		assert result.wasSuccessful(), result.errors[0][1]
 
 
+from mocktest.mocking import MockAct
+from mocktest import args_containing, any_args, kwargs_containing, any_kwargs
+class TestSplatMatchers(TestCase):
+	def mock_expecting(self, *a, **k):
+		return MockAct('anonymous mock')(*a, **k).once()
+		
+	def test_splat_args(self):
+		self.assertTrue(self.mock_expecting(*any_args)._satisfied_by([Call.like(1,2,3)]))
+		print repr(type(args_containing(1)))
+		print repr(type(*args_containing(1)))
+		print "-0-"
+		self.assertTrue(self.mock_expecting(*args_containing(1))._satisfied_by([Call.like(1,2,3)]))
+		self.assertTrue(self.mock_expecting(*args_containing(1))._satisfied_by([Call.like(2,1,3)]))
+		self.assertFalse(self.mock_expecting(*args_containing(1))._satisfied_by([Call.like(2,2,3)]))
+		self.assertFalse(self.mock_expecting(1, 2, *args_containing(1))._satisfied_by([Call.like(1,2,4,3)]))
+
+	def test_splat_kwargs(self):
+		self.assertTrue(self.mock_expecting(**any_kwargs)._satisfied_by([Call.like()]))
+		self.assertTrue(self.mock_expecting(**any_kwargs)._satisfied_by([Call.like(x=1)]))
+		self.assertTrue(self.mock_expecting(**kwargs_containing(x=1))._satisfied_by([Call.like(x=1, y=2)]))
+		self.assertFalse(self.mock_expecting(**kwargs_containing(x=1))._satisfied_by([Call.like(y=2)]))
+
+
