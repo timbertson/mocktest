@@ -1,9 +1,9 @@
-<?xml version="1.0" ?>
+<?xml version="1.0"?>
 <?xml-stylesheet type='text/xsl' href='interface.xsl'?>
-<interface uri="http://gfxmonk.net/dist/0install/mocktest.xml" xmlns="http://zero-install.sourceforge.net/2004/injector/interface">
+<interface xmlns="http://zero-install.sourceforge.net/2004/injector/interface" uri="http://gfxmonk.net/dist/0install/mocktest.xml">
 	<name>mocktest</name>
 	<summary>mocking library for python, inspired by rspec</summary>
-	<publish mode="featured" xmlns="http://gfxmonk.net/dist/0install"/>
+	<publish xmlns="http://gfxmonk.net/dist/0install" mode="featured"/>
 	<description>
 mocktest
 ********
@@ -50,6 +50,10 @@ http://gfxmonk.net/dist/doc/mocktest/doc/
 		<implementation id="sha1new=39bcc9635399d6c86ec30ae62400b4f2d7d5c88d" released="2010-12-29" version="0.5">
 			<manifest-digest sha256="fb7382793748e4d15df58a1ebbba44def515b36982ddaa4551868f79ebcc5fab"/>
 			<archive href="http://gfxmonk.net/dist/0install/mocktest/mocktest-0.5.tgz" size="43523"/>
+		</implementation>
+		<implementation id="sha1new=dffb9d961e331eae772faf4c18e95ccb8cfe1c78" released="2011-02-27" version="0.5.1">
+			<manifest-digest sha256="b3b6a6dc4033f385f4dc3a1fd2f20d6414e046283749ad6a11a992ae8b81d6e3"/>
+			<archive href="http://gfxmonk.net/dist/0install/mocktest/mocktest-0.5.1.tgz" size="44599"/>
 		</implementation>
 	</group>
 </interface>
