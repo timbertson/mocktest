@@ -18,5 +18,6 @@ class BaseTest(TestCase):
 	def test_not__matcher_should_invert_matches_and_descriptions(self):
 		self.assertFalse(Not(Any).matches(object()))
 		self.assertEqual(Not(Any).desc(), 'not any object')
-		
-
+	
+	def test_splat_matcher_should_have_a_meaningful_description(self):
+		self.assertEquals(repr(*any_args), "args like [\'any object\']")

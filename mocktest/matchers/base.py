@@ -91,7 +91,7 @@ class SplatMatcherMaker(Matcher):
 		raise RuntimeError("SplatMatcher instance used without prefixing with '*'")
 	desc = matches
 
-class SplatMatcher(object):
+class SplatMatcher(Matcher):
 	def __init__(self, matcher):
 		self._matcher = matcher
 	
@@ -99,7 +99,7 @@ class SplatMatcher(object):
 		return self._matcher.matches(args)
 
 	def desc(self):
-		return "args where [%r]" % (self._matcher.desc(),)
+		return "args like [%r]" % (self._matcher.desc(),)
 
 class ElementWiseSplatMatcher(SplatMatcher):
 	def matches(self, args, kwargs):

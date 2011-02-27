@@ -244,7 +244,7 @@ class StubbedMethod(object):
 			if act._matches(call):
 				return act._act_upon(call)
 		else:
-			act_condition_descriptions = ["   - " + act.condition_description for act in self._acts]
+			act_condition_descriptions = ["   - " + act.condition_description for act in reversed(self._acts)]
 			raise TypeError("stubbed method %r received unexpected arguments: %s\nAllowable argument conditions are:\n%s" % (self._name, call.desc(),"\n".join(act_condition_descriptions)))
 
 	def _verify(self):
