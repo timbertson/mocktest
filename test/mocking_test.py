@@ -275,6 +275,19 @@ class TestMatchers(TestCase):
 class TestMockCreation(TestCase):
 	@passing
 	def test_creation_methods_kwargs(self):
+		obj = mock('foo').with_methods(x=1, y=2)
+		assert obj.x() == 1
+		assert obj.x(1,2,3) == 1
+		assert obj.y() == 2, obj.y()
+
+	@passing
+	def test_creation_children_kwargs(self):
+		obj = mock('foo').with_children(x=1, y=2)
+		assert obj.x == 1
+		assert obj.y == 2
+		
+	@passing
+	def test_modification_methods_kwargs(self):
 		obj = mock('foo')
 		modify(obj).methods(x=1, y=2)
 		assert obj.x() == 1
@@ -282,7 +295,7 @@ class TestMockCreation(TestCase):
 		assert obj.y() == 2, obj.y()
 
 	@passing
-	def test_creation_children_kwargs(self):
+	def test_modification_children_kwargs(self):
 		obj = mock('foo')
 		modify(obj).children(x=1, y=2)
 		assert obj.x == 1

@@ -88,6 +88,19 @@ def mock_expect(obj, name):
 def _special_method(name):
 	return name.startswith('__') and name.endswith('__')
 
+
+def assign_kwargs_children(self, **children):
+	[setattr(self, k, v) for k, v in children.items()]
+	return self
+
+def assign_kwargs_methods(self, **methods):
+	def do_return(return_value):
+		return lambda *a, **k: return_value
+
+	for k,v in methods.items():
+		setattr(self, k, do_return(v))
+	return self
+
 from lib.realsetter import RealSetter
 class RecursiveAssignmentWrapper(RealSetter):
 	"""
@@ -110,8 +123,7 @@ class RecursiveAssignmentWrapper(RealSetter):
 			>>> obj.y
 			'child y'
 		"""
-		[setattr(self, k, v) for k, v in children.items()]
-		return self
+		return assign_kwargs_children(self, **children)
 
 	def methods(self, **methods):
 		"""
@@ -119,12 +131,7 @@ class RecursiveAssignmentWrapper(RealSetter):
 
 			>>> modify(obj).children(x=1, y=mock('child y'))
 		"""
-		def do_return(return_value):
-			return lambda *a, **k: return_value
-
-		for k,v in methods.items():
-			setattr(self, k, do_return(v))
-		return self
+		return assign_kwargs_methods(self, **methods)
 
 	def copying(self, other, value=lambda *a, **kw: None):
 		"""
@@ -194,6 +201,26 @@ class RecursiveStub(Object):
 	def __call__(self, *a, **kw):
 		self.received_calls.append(Call(a,kw, stack=True))
 		return None
+
+	def with_children(self, **children):
+		"""
+		Set children via kwargs, e.g.:
+
+			>>> mock("name").with_children(x=1, y='child y')
+			>>> obj.x
+			1
+			>>> obj.y
+			'child y'
+		"""
+		return assign_kwargs_children(self, **children)
+
+	def with_methods(self, **methods):
+		"""
+		Set child methods via kwargs, e.g.:
+
+			>>> mock("name").with_children(x=1, y=mock('child y'))
+		"""
+		return assign_kwargs_methods(self, **methods)
 
 def stub_method(obj, name):
 	assert MockTransaction.started, "Mock transaction has not been started. Make sure you are inheriting from mocktest.TestCase"
