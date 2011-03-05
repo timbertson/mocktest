@@ -109,8 +109,10 @@ class TestMockingSpecialMethods(TestCase):
 		self.assertRaises(TypeError, lambda: obj())
 		when(obj).__call__(2).then_return('two')
 		when(obj).__call__(3).then_return('three')
+		when(obj)(4).then_return('four')
 		assert obj(2) == 'two'
 		assert obj(3) == 'three'
+		assert obj(4) == 'four'
 	
 	def test_mocking_special_methods_should_revert_class_heirarchies(self):
 		with MockTransaction:

@@ -158,7 +158,7 @@ class RecursiveAssignmentWrapper(RealSetter):
 class GetWrapper(object):
 	"""
 	An intermediate object that calls its callback when an attribute
-	is accesses (via __getattr__).
+	is accessed (via __getattr__).
 	Can only be used once, or it throws an error
 	"""
 	def __init__(self, callback):
@@ -169,6 +169,10 @@ class GetWrapper(object):
 		if self._used: raise RuntimeError("already used!")
 		self._used = True
 		return self._callback(name)
+	
+	@property
+	def __call__(self):
+		return self.__getattr__('__call__')
 	
 class Object(object):
 	"""a named object"""
