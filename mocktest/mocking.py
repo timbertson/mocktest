@@ -2,6 +2,7 @@ from matchers import Matcher, SplatMatcher
 from mockerror import MockError
 from callrecord import Call
 from transaction import MockTransaction
+import itertools
 
 from lib.singletonclass import ensure_singleton_class
 __unittest = True
@@ -11,6 +12,7 @@ __all__ = [
 	'expect',
 	'mock',
 	'modify',
+	'Object',
 ]
 
 def when(obj):
@@ -442,8 +444,20 @@ class MockAct(object):
 			return True
 			
 		def check_kwargs(k, kwargs):
-			if kwargs.keys() == ['__kwargs']:
-				return kwargs['__kwargs'].matches(k)
+			kwargs = kwargs.copy()
+			wildcard_kwargs_matcher = kwargs.pop('__kwargs', None)
+			if wildcard_kwargs_matcher is not None:
+				def splitdict(d, keys):
+					included, others = {}, {}
+					for k, v in d.items():
+						if k in keys:
+							included[k] = v
+						else:
+							others[k] = v
+					return included, others
+
+				explicit_kwargs, wildcard_kwargs = splitdict(k, kwargs.keys())
+				return check_kwargs(explicit_kwargs, kwargs) and wildcard_kwargs_matcher.matches(wildcard_kwargs)
 
 			if not len(k) == len(kwargs):
 				return False

@@ -374,9 +374,6 @@ class TestSplatMatchers(TestCase):
 		
 	def test_splat_args(self):
 		self.assertTrue(self.mock_expecting(*any_args)._satisfied_by([Call.like(1,2,3)]))
-		print repr(type(args_containing(1)))
-		print repr(type(*args_containing(1)))
-		print "-0-"
 		self.assertTrue(self.mock_expecting(*args_containing(1))._satisfied_by([Call.like(1,2,3)]))
 		self.assertTrue(self.mock_expecting(*args_containing(1))._satisfied_by([Call.like(2,1,3)]))
 		self.assertFalse(self.mock_expecting(*args_containing(1))._satisfied_by([Call.like(2,2,3)]))
@@ -387,5 +384,10 @@ class TestSplatMatchers(TestCase):
 		self.assertTrue(self.mock_expecting(**any_kwargs)._satisfied_by([Call.like(x=1)]))
 		self.assertTrue(self.mock_expecting(**kwargs_containing(x=1))._satisfied_by([Call.like(x=1, y=2)]))
 		self.assertFalse(self.mock_expecting(**kwargs_containing(x=1))._satisfied_by([Call.like(y=2)]))
+	
+	def test_matching_subset_of_kwargs(self):
+		self.assertTrue(self.mock_expecting(x=1, **any_kwargs)._satisfied_by([Call.like(x=1, y=2)]))
+		self.assertFalse(self.mock_expecting(x=1, **any_kwargs)._satisfied_by([Call.like(x=2, y=2)]))
+
 
 
