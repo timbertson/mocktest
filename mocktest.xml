@@ -47,6 +47,9 @@ http://gfxmonk.net/dist/doc/mocktest/doc/
 	</rich-description>
 	<group>
 		<environment insert="" mode="append" name="PYTHONPATH"/>
+		<command name="test">
+			<runner interface="http://gfxmonk.net/dist/0install/nosetests-plugin-resolver.xml"/>
+		</command>
 		<implementation id="sha1new=39bcc9635399d6c86ec30ae62400b4f2d7d5c88d" released="2010-12-29" version="0.5">
 			<manifest-digest sha256="fb7382793748e4d15df58a1ebbba44def515b36982ddaa4551868f79ebcc5fab"/>
 			<archive href="http://gfxmonk.net/dist/0install/mocktest/mocktest-0.5.tgz" size="43523"/>
