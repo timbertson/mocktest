@@ -275,41 +275,14 @@ class TestCase(unittest.TestCase):
 		in the teardown method counts for a failure
 		"""
 		if result is None: result = self.defaultTestResult()
-		result.startTest(self)
-		testMethod = getattr(self, self._testMethodName)
-		try:
-			try:
-				self.setUp()
-			except KeyboardInterrupt:
-				raise
-			except:
-				result.addError(self, self._exc_info())
-				return
-
-			ok = False
-			try:
-				testMethod()
-				ok = True
-			except self.failureException:
-				result.addFailure(self, self._exc_info())
-			except KeyboardInterrupt:
-				raise
-			except:
-				result.addError(self, self._exc_info())
-
-			try:
-				self.tearDown()
-			except self.failureException:
-				# ignore this failure if the test already failed
-				if ok:
-					result.addFailure(self, self._exc_info())
-					ok = False
-			except KeyboardInterrupt:
-				raise
-			except:
-				result.addError(self, self._exc_info())
-				ok = False
-			if ok: result.addSuccess(self)
-		finally:
-			result.stopTest(self)
+		addError = result.addError
+		def patchedAddError(*a, **k):
+			if len(a) == 1 and len(a[0]) == 3:
+				type = a[0][0]
+				if issubclass(type, self.failureException):
+					# call it a failure instead of an error
+					return result.addFailure(*a, **k)
+			return addError(*a, **k)
+		result.addError = patchedAddError
+		return super(TestCase, self).run(result)
 	
