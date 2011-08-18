@@ -29,6 +29,19 @@ Please see the full documentation online at:
 http://gfxmonk.net/dist/doc/mocktest/doc/
 
 	</description>
+	<pypi-extra xmlns="http://gfxmonk.net/dist/0install">
+		classifiers=[
+			"License :: OSI Approved :: BSD License",
+			"Programming Language :: Python",
+			"Development Status :: 4 - Beta",
+			"Intended Audience :: Developers",
+			"Topic :: Software Development :: Libraries :: Python Modules",
+			"Topic :: Software Development :: Testing",
+		],
+		keywords='test mock expect expectation stub rspec unittest',
+		license='GPLv3'
+	</pypi-extra>
+
 	<homepage>http://gfxmonk.net/dist/doc/mocktest/doc/</homepage>
 	<rich-description xmlns="http://gfxmonk.net/dist/0install">
 		<div xmlns="http://www.w3.org/1999/xhtml">
