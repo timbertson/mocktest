@@ -12,7 +12,7 @@ PAPEROPT_a4     = -D latex_paper_size=a4
 PAPEROPT_letter = -D latex_paper_size=letter
 ALLSPHINXOPTS   = -d $(BUILDDIR)/doctrees $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) .
 
-.PHONY: help clean html dirhtml pickle json htmlhelp qthelp latex changes linkcheck doctest copy doc
+.PHONY: help clean html dirhtml pickle json htmlhelp qthelp latex changes linkcheck doctest copy doc test
 
 help:
 	@echo "Please use \`make <target>' where <target> is one of"
@@ -35,6 +35,9 @@ clean:
 
 0:
 	mkzero-gfxmonk -p mocktest -p setup.py mocktest.xml
+
+test:
+	0launch --command=test mocktest-local.xml
 
 html:
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
