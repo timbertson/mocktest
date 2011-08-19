@@ -41,21 +41,16 @@ http://gfxmonk.net/dist/doc/mocktest/doc/
 		keywords='test mock expect expectation stub rspec unittest',
 		license='GPLv3'
 	</pypi-extra>
-
 	<homepage>http://gfxmonk.net/dist/doc/mocktest/doc/</homepage>
 	<rich-description xmlns="http://gfxmonk.net/dist/0install">
 		<div xmlns="http://www.w3.org/1999/xhtml">
-			<div id="mocktest">
-				<h1>mocktest</h1>
-				<p>... is a powerful and easy-to-use mocking library, inspired by rspec and similar in some ways to Michael Foord's popular Mock module.</p>
-				<p>Source / Issues: <a href="http://github.com/gfxmonk/mocktest/tree/master">http://github.com/gfxmonk/mocktest/tree/master</a></p>
-				<p>Zero install feed: <a href="http://gfxmonk.net/dist/0install/mocktest.xml">http://gfxmonk.net/dist/0install/mocktest.xml</a> (this is the preferred distribution method)</p>
-				<p>Cheese shop entry: <a href="http://pypi.python.org/pypi/mocktest">http://pypi.python.org/pypi/mocktest</a></p>
-				<div id="documentation-installation">
-					<h2>Documentation / Installation</h2>
-					<p>Please see the full documentation online at: <a href="http://gfxmonk.net/dist/doc/mocktest/doc/">http://gfxmonk.net/dist/doc/mocktest/doc/</a></p>
-				</div>
-			</div>
+			<h1 id="mocktest">mocktest</h1>
+			<p>... is a powerful and easy-to-use mocking library, inspired by rspec and similar in some ways to Michael Foord's popular Mock module.</p>
+			<p>Source / Issues: <a href="http://github.com/gfxmonk/mocktest/tree/master">http://github.com/gfxmonk/mocktest/tree/master</a></p>
+			<p>Zero install feed: <a href="http://gfxmonk.net/dist/0install/mocktest.xml">http://gfxmonk.net/dist/0install/mocktest.xml</a> (this is the preferred distribution method)</p>
+			<p>Cheese shop entry: <a href="http://pypi.python.org/pypi/mocktest">http://pypi.python.org/pypi/mocktest</a></p>
+			<h2 id="documentation-installation">Documentation / Installation</h2>
+			<p>Please see the full documentation online at: <a href="http://gfxmonk.net/dist/doc/mocktest/doc/">http://gfxmonk.net/dist/doc/mocktest/doc/</a></p>
 		</div>
 	</rich-description>
 	<group>
@@ -70,6 +65,10 @@ http://gfxmonk.net/dist/doc/mocktest/doc/
 		<implementation id="sha1new=dffb9d961e331eae772faf4c18e95ccb8cfe1c78" released="2011-02-27" version="0.5.1">
 			<manifest-digest sha256="b3b6a6dc4033f385f4dc3a1fd2f20d6414e046283749ad6a11a992ae8b81d6e3"/>
 			<archive href="http://gfxmonk.net/dist/0install/mocktest/mocktest-0.5.1.tgz" size="44599"/>
+		</implementation>
+		<implementation id="sha1new=231e790a54a8dccca3e6a400681f26a3fe00aeab" released="2011-08-19" version="0.6">
+			<manifest-digest sha256="e6859b4e3fc0191c516578968f94f61408a51189f989bd3580d0f1c6b859875f"/>
+			<archive href="http://gfxmonk.net/dist/0install/mocktest/mocktest-0.6.tgz" size="45764"/>
 		</implementation>
 	</group>
 </interface>
