@@ -276,13 +276,19 @@ class TestCase(unittest.TestCase):
 		"""
 		if result is None: result = self.defaultTestResult()
 		addError = result.addError
-		def patchedAddError(*a, **k):
-			if len(a) == 1 and len(a[0]) == 3:
-				type = a[0][0]
-				if issubclass(type, self.failureException):
-					# call it a failure instead of an error
-					return result.addFailure(*a, **k)
-			return addError(*a, **k)
-		result.addError = patchedAddError
+		if not getattr(addError, '_mocktest_patched', False):
+			def patchedAddError(*a, **k):
+				# be very cautious, as addError could change, and we've no good reason to break it.
+				if len(a) == 2 and len(a[1]) == 3:
+					type = a[1][0]
+					if issubclass(type, self.failureException):
+						# call it a failure instead of an error
+						return result.addFailure(*a, **k)
+				else:
+					import warnings
+					warnings.warn("unexpected argument set: (*%r, **%r)" % (a, k))
+				return addError(*a, **k)
+			patchedAddError._mocktest_patched = True
+			result.addError = patchedAddError
 		return super(TestCase, self).run(result)
-	
+
