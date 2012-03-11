@@ -171,6 +171,9 @@ class GetWrapper(object):
 		if self._used: raise RuntimeError("already used!")
 		self._used = True
 		return self._callback(name)
+
+	def __getitem__(self, name): # workaround for special methods like __new__
+		return self.__getattr__(name)
 	
 	@property
 	def __call__(self):
