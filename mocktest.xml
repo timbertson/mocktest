@@ -54,7 +54,7 @@ http://gfxmonk.net/dist/doc/mocktest/doc/
 		</div>
 	</rich-description>
 	<group>
-		<environment insert="" mode="append" name="PYTHONPATH"/>
+		<environment insert="" mode="prepend" name="PYTHONPATH"/>
 		<command name="test">
 			<runner interface="http://gfxmonk.net/dist/0install/nosetests-plugin-resolver.xml"/>
 		</command>
