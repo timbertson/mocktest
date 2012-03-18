@@ -5,10 +5,15 @@ String Matchers
 .. function:: string_matching(pattern)
 
 	Takes either a string or a compiled regex pattern.
+
+.. function:: string_containing(substring)
+
+	Matches any string containing the given substring
 """
 
 __all__ = [
-	'string_matching'
+	'string_matching',
+	'string_containing',
 ]
 import re
 from base import Matcher
@@ -24,8 +29,18 @@ class StringRegexMatcher(Matcher):
 		return bool(self.regex.match(other))
 	
 	def desc(self):
-		return "A string matching: %s" % (self.desc_str,)
+		return "a string matching: %s" % (self.desc_str,)
 
+class SubstringMatcher(Matcher):
+	def __init__(self, regex):
+		self.expected = regex
+	
+	def matches(self, other):
+		return isinstance(other, str) and self.expected in other
+	
+	def desc(self):
+		return "a string containing: %s" % (self.expected,)
 
 string_matching = StringRegexMatcher
+string_containing = SubstringMatcher
 
