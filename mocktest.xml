@@ -74,5 +74,9 @@ http://gfxmonk.net/dist/doc/mocktest/doc/
 			<manifest-digest sha256="0689f4bdd6cefd831e35ae92d9199ff835760af863c8fdba0c57f4282c07567b"/>
 			<archive href="http://gfxmonk.net/dist/0install/mocktest/mocktest-0.6.1.tgz" size="45882"/>
 		</implementation>
+		<implementation id="sha1new=d83928b46eda3c4577e13411db3f92d45b78c93e" released="2012-03-18" version="0.6.2">
+			<manifest-digest sha256="48cb6ffd6d6ccaa565a8353f5293b64116fb8879240a61e868b41278d49be4f7"/>
+			<archive href="http://gfxmonk.net/dist/0install/mocktest/mocktest-0.6.2.tgz" size="47281"/>
+		</implementation>
 	</group>
 </interface>
