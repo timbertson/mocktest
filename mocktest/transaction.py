@@ -1,4 +1,4 @@
-from mockerror import MockError
+from .mockerror import MockError
 
 __unittest = True
 
@@ -31,7 +31,7 @@ class _MockTransaction(object):
 		for action in reversed(self.teardown_actions):
 			try:
 				action()
-			except StandardError, e:
+			except StandardError as e:
 				errors.append(e)
 		self.teardown_actions = None
 		self.started = False
