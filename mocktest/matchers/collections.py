@@ -86,7 +86,7 @@ class ItemMatcher(Matcher):
 		return other in self.collection
 	
 	def desc(self):
-		return "An item from the collection: %r" % (self.collection,)
+		return "an item from the collection: %r" % (self.collection,)
 
 object_containing = IncludeMatcher
 dict_containing = DictIncludeMatcher

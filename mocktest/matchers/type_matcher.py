@@ -31,7 +31,7 @@ class TypeMatcher(Matcher):
 		return isinstance(other, self.cls)
 	
 	def desc(self):
-		return "Any instance of %s" % (self.cls.__name__,)
+		return "any instance of %s" % (self.cls.__name__,)
 
 class ObjectWithAttribute(Matcher):
 	def __init__(self, attr_name):
