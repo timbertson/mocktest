@@ -127,6 +127,7 @@ class TestCase(unittest.TestCase):
 		order to reset mock state and verify expectations upon test \
 		completion.
 	- enhanced versions of assertTrue / False, assertRaises
+	- assertMatches
 	"""
 	pending = globals()['pending']
 	ignore = globals()['ignore']
@@ -267,6 +268,16 @@ class TestCase(unittest.TestCase):
 		else:
 			self.fail("%s did not raise an exception" % (callsig,))
 	failUnlessRaises = assertRaises
+
+	def assertMatches(self, matcher, val, message=None):
+		"""
+		Fail the test if an object does not satisfy the given matcher.
+		"""
+		if not matcher.matches(val):
+			fail_msg = "expected:\n%r\nto be %s" % (val, matcher.desc())
+			if message is not None:
+				fail_msg += "\n(%s)" % (message,)
+			self.fail(fail_msg)
 	
 	def run(self, result=None):
 		"""

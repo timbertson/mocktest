@@ -303,6 +303,35 @@ class TestAutoSpecVerification(unittest.TestCase):
 		result = self.run_method(test_raise_mismatch_regex)
 		self.assertFalse(result.wasSuccessful())
 	
+	def test_assert_matches_success(self):
+		from mocktest.matchers import string_matching
+		def test_string_match(s):
+			s.assertMatches(string_matching('^f'), 'foo')
+		result = self.run_method(test_string_match)
+		self.assertTrue(result.wasSuccessful())
+
+	def test_assert_matches_error_message(self):
+		from mocktest.matchers import string_matching
+		def test_string_match(s):
+			s.assertMatches(string_matching('^f'), 'boo')
+		result = self.run_method(test_string_match)
+		self.assertFalse(result.wasSuccessful())
+		failure_text = result.failures[0][1]
+		self.assertTrue(
+			"""AssertionError: expected:\n'boo'\nto be a string matching: ^f""" in failure_text,
+			repr(result))
+
+	def test_assert_matches_error_message_with_custom_message(self):
+		from mocktest.matchers import string_matching
+		def test_string_match(s):
+			s.assertMatches(string_matching('^f'), 'boo', 'message')
+		result = self.run_method(test_string_match)
+		self.assertFalse(result.wasSuccessful())
+		failure_text = result.failures[0][1]
+		self.assertTrue(
+			"""AssertionError: expected:\n'boo'\nto be a string matching: ^f\n(message)""" in failure_text,
+			repr(result))
+	
 	def test_reality_formatting(self):
 		core._teardown()
 		try:
