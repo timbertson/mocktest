@@ -3,7 +3,7 @@
 
 # You can set these variables from the command line.
 SPHINXOPTS    =
-SPHINXBUILD   = sphinx-build
+SPHINXBUILD   = 0launch http://gfxmonk.net/dist/0install/sphinx.xml
 PAPER         =
 BUILDDIR      = doc/build
 
