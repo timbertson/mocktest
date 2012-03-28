@@ -33,7 +33,7 @@ you should read the :mod:`mocktest module documentation <mocktest>`.
 
 Installation
 ------------
-As mentioned above, the preferred distribution method is via `Zero Install <http://zero-install.sourceforge.net/>`_
+The preferred distribution method is via `Zero Install <http://0install.net/>`_
 
 If you just want to try it out and don't want to make a feed that
 depends on mocktest, you can run::
