@@ -63,7 +63,7 @@ def _compose(hook, func, onerror=None):
 		try:
 			if hook is not None: hook()
 			if func is not None: func()
-		exceptException:
+		except Exception:
 			try:
 				if onerror is not None: onerror()
 			except StandardError: pass
