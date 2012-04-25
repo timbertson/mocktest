@@ -56,7 +56,7 @@ http://gfxmonk.net/dist/doc/mocktest/doc/
 	<group>
 		<environment insert="" mode="prepend" name="PYTHONPATH"/>
 		<command name="test">
-			<runner interface="http://gfxmonk.net/dist/0install/nosetests-runner.xml" command="run-py2"/>
+			<runner command="run-py2" interface="http://gfxmonk.net/dist/0install/nosetests-runner.xml"/>
 		</command>
 		<requires interface="http://repo.roscidus.com/python/python">
 			<version before="3"/>
@@ -80,6 +80,10 @@ http://gfxmonk.net/dist/doc/mocktest/doc/
 		<implementation id="sha1new=d83928b46eda3c4577e13411db3f92d45b78c93e" released="2012-03-18" version="0.6.2">
 			<manifest-digest sha256="48cb6ffd6d6ccaa565a8353f5293b64116fb8879240a61e868b41278d49be4f7"/>
 			<archive href="http://gfxmonk.net/dist/0install/mocktest/mocktest-0.6.2.tgz" size="47281"/>
+		</implementation>
+		<implementation id="sha1new=05d0171a59e83e25d27cd5bbca9c032f34f43557" released="2012-04-25" version="0.6.3">
+			<manifest-digest sha256="933f4c25956d71c440be1079002ed413eec110b7d99bf703f3e1af80c0dd55e5"/>
+			<archive href="http://gfxmonk.net/dist/0install/mocktest/mocktest-0.6.3.tgz" size="49893"/>
 		</implementation>
 	</group>
 </interface>
