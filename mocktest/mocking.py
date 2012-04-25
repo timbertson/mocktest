@@ -3,6 +3,8 @@ from mockerror import MockError
 from callrecord import Call
 from transaction import MockTransaction
 import itertools
+import collections
+import operator
 
 from lib.singletonclass import ensure_singleton_class
 __unittest = True
@@ -14,6 +16,22 @@ __all__ = [
 	'modify',
 	'Object',
 ]
+
+
+Settable = collections.namedtuple('Settable', ('get','set','delete', 'error'))
+Item = Settable(
+	get=operator.getitem,
+	set=operator.setitem,
+	delete=operator.delitem,
+	error=KeyError,
+)
+
+Attr = Settable(
+	get=getattr,
+	set=setattr,
+	delete=delattr,
+	error=AttributeError,
+)
 
 def when(obj):
 	"""
@@ -54,32 +72,60 @@ def modify(obj):
 	this test. E.g:
 		>>> modify(obj).child = replacement_child
 		>>> modify(obj).grand.child = replacement_grand_child
+		>>> modify(obj)['item'] = replacement_item
 	
-	All replaced attributes will be reverted when the test completes.
+	All replaced attributes / items will be reverted when the test completes.
 
 	:rtype: :class:`~mocktest.mocking.RecursiveAssignmentWrapper`
 	"""
-	replacements = []
-	def replace_(name, val):
-		replace_attr(obj, name, val, generate_reset=len(replacements)==0)
-		replacements.append(name)
-	return RecursiveAssignmentWrapper(replace_)
+	return RecursiveAssignmentWrapper(obj)
 
-def replace_attr(obj, name, val, generate_reset=True):
-	assert MockTransaction.started
-	if generate_reset:
-		add_teardown_for_attr(obj, name)
-	setattr(obj, name, val)
-	return val
-
-def add_teardown_for_attr(obj, attr):
+def add_teardown_for(obj, attr, settable = Attr):
+	"""add a hook to remove `attr` when transaction ends.
+	Settable can be Attr or Item"""
 	try:
-		old_attr = getattr(obj, attr)
-		reset = lambda: setattr(obj, attr, old_attr)
-	except AttributeError:
-		reset = lambda: delattr(obj, attr)
+		old_attr = settable.get(obj, attr)
+	except settable.error:
+		reset = lambda: settable.delete(obj, attr)
+	else:
+		reset = lambda: settable.set(obj, attr, old_attr)
 	MockTransaction.add_teardown(reset)
 
+def delegating_settable_with_rollback(obj, settable):
+	"""a settable that, when `set` is called, will add
+	a teardown hook to revert this key to the original value
+	(which includes deleting it if it didn't initially exist).
+
+	Teardown methods are only added the first time each new
+	attribute is encountered.
+	"""
+	keys = set()
+	def _set(_ignored_obj, name, val):
+		assert MockTransaction.started
+		if name not in keys:
+			add_teardown_for(obj, name, settable)
+			keys.add(name)
+		settable.set(obj, name, val)
+	_get = lambda _, *a: settable.get(obj, *a)
+	_delete = lambda _, *a: settable.delete(obj, *a)
+	return settable._replace(get=_get, set=_set, delete=_delete)
+
+def fallback_settable(fallback_obj, settable):
+	"""a settable that will set items locally, and fallback to the original object when
+	`get` is called for an unset key"""
+	d = {}
+	def _get(_ignored_obj, name):
+		if name in d:
+			return d[name]
+		else:
+			return settable.get(obj, name)
+	
+	def _set(_ignored_obj, name, val):
+		d[name] = val
+	def _delete(_ignored_obj, name, val):
+		del d[name]
+
+	return settable._replace(get=_get, set=_set, delete=_delete)
 
 def mock_when(obj, name):
 	return stub_method(obj, name)._new_act(name).at_least(0).times()
@@ -111,9 +157,34 @@ class RecursiveAssignmentWrapper(RealSetter):
 	Assigning a value to an attribute of this object
 	assigns the same value to the original object, but
 	only for the duration of the current test.
+
+	The same goes for items (i.e dictionary-style access).
+
+	Getting an attribute or item from this object replaces
+	that item on the original object with a wrapped version
+	that always supports assignment of attributes / items.
+	This is useful e.g to replace readonly attributes
+	on nested objects:
+
+	# does NOT work, as `write` is not assignable
+	>>> modify(sys.stderr).write = my_write_func
+
+	# but we can work around it, by replacing the whole `stderr`
+	# object with one that has all the values of the real `stderr`
+	# but allowing us to override of any attribute:
+	>>> modify(sys).stderr.write = my_write_func
 	"""
-	def __init__(self, callback):
-		self._real_set(_callback=callback)
+	def __init__(self, delegate, modify_delegate=True):
+		self._real_set(_modify_delegate=modify_delegate)
+		if modify_delegate:
+			item = delegating_settable_with_rollback(delegate, Item)
+			attr = delegating_settable_with_rollback(delegate, Attr)
+		else:
+			item = fallback_settable(delegate, Item)
+			attr = fallback_settable(delegate, Attr)
+
+		self._real_set(_item_setter=item)
+		self._real_set(_attr_setter=attr)
 	
 	def children(self, **children):
 		"""
@@ -131,7 +202,7 @@ class RecursiveAssignmentWrapper(RealSetter):
 		"""
 		Set child methods via kwargs, e.g.:
 
-			>>> modify(obj).children(x=1, y=mock('child y'))
+			>>> modify(obj).methods(x=1, y=mock('child y'))
 		"""
 		return assign_kwargs_methods(self, **methods)
 
@@ -146,16 +217,35 @@ class RecursiveAssignmentWrapper(RealSetter):
 			setattr(self, attr, value)
 		return self
 
-	def __setattr__(self, name, val):
-		self._real_set(**{name:val})
-		return self._callback(name, val)
+	def __setitem__(self, key, val):
+		self._item_setter.set(self, key, val)
+
+	def __setattr__(self, key, val):
+		self._attr_setter.set(self, key, val)
+		self._real_set(**{key:val})
+
+	def _do_get(self, name, settable):
+		if self._modify_delegate:
+			return self._mutating_get(name, settable)
+		else:
+			return settable.get(self, name)
+
+	def _mutating_get(self, name, settable):
+		"""get an item or attr from the original object, wrapping it in a RecursiveAssignmentWrapper()"""
+		try:
+			delegate = settable.get(self, name)
+		except settable.error:
+			delegate = DictObject(name)
+		if not isinstance(delegate, RecursiveAssignmentWrapper):
+			delegate = RecursiveAssignmentWrapper(delegate, modify_delegate = False)
+			settable.set(self, name, delegate)
+		return delegate
 
 	def __getattr__(self, name):
-		if name in self.__dict__:
-			return self._real_get(name)
-		val = RecursiveAssignmentWrapper(self._callback)
-		setattr(self, name, val)
-		return val
+		return self._do_get(name, self._attr_setter)
+
+	def __getitem__(self, name):
+		return self._do_get(name, self._item_setter)
 
 class GetWrapper(object):
 	"""
@@ -183,6 +273,13 @@ class Object(object):
 	"""a named object"""
 	def __init__(self, name="unnamed object"):
 		self.__name = name
+	def __repr__(self): return "<#%s: %s>" % (type(self).__name__, self.__name)
+	def __str__(self): return self.__name
+
+class DictObject(dict):
+	def __init__(self, name="unnamed object"):
+		self.__name = name
+		super(DictObject, self).__init__()
 	def __repr__(self): return "<#%s: %s>" % (type(self).__name__, self.__name)
 	def __str__(self): return self.__name
 
@@ -236,7 +333,7 @@ def stub_method(obj, name):
 	if _special_method(name) and not isinstance(obj, type):
 		ensure_singleton_class(obj)
 		obj = type(obj)
-	add_teardown_for_attr(obj, name)
+	add_teardown_for(obj, name)
 	try:
 		old_attr = getattr(obj, name)
 		if isinstance(old_attr, StubbedMethod):

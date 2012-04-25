@@ -51,7 +51,7 @@ class TestMockingCalls(TestCase):
 		self.assertRaises(AttributeError, lambda: obj.meth2)
 	
 	def test_should_revert_all_replaced_attrs(self):
-		self.assertEquals(_dir(object), [])
+		self.assertEquals(_dir(obj), [])
 		with MockTransaction:
 			when(obj).meth1.then_return(1)
 			assert obj.meth1() == 1
@@ -59,7 +59,7 @@ class TestMockingCalls(TestCase):
 			assert obj.meth2() == 2
 			modify(obj).attr = 3
 			assert obj.attr == 3
-		self.assertEquals(_dir(object), [])
+		self.assertEquals(_dir(obj), [])
 
 	@passing
 	def test_give_a_useful_message_when_overriding_an_inbuilt_method_is_impossible(self):
@@ -94,13 +94,39 @@ class TestMockingCalls(TestCase):
 		obj = Object()
 		obj.foo = 'original'
 		modify(obj).foo = 'replaced'
+		modify(obj).bar = 'created'
 		modify(obj).grand.child = True
 		assert obj.foo == 'replaced'
-		assert obj.grand.child
+		assert obj.grand.child == True
+		assert obj.bar == 'created'
 		core._teardown()
 		core._setup()
 		assert obj.foo == 'original', obj.foo
 		self.assertRaises(AttributeError, lambda: obj.grand)
+
+	@passing
+	def test_replacing_items(self):
+		class DictObj(dict, object): pass
+		obj = DictObj()
+		obj['foo'] = 'original'
+
+		modify(obj)['foo'] = 'replaced'
+		assert obj['foo'] == 'replaced'
+		modify(obj)['bar'] = 'created'
+		assert obj['bar'] == 'created'
+
+		modify(obj).grand['child'] = True
+		assert obj.grand['child'] == True, obj.grand['child']
+
+		modify(obj)['grand'].child = False
+		assert obj['grand'].child == False
+
+		core._teardown()
+		core._setup()
+		assert obj['foo'] == 'original', obj['foo']
+		self.assertRaises(KeyError, lambda: obj['bar'])
+		self.assertRaises(KeyError, lambda: obj['grand'])
+		self.assertRaises(KeyError, lambda: obj['child'])
 
 
 class TestMockingSpecialMethods(TestCase):
