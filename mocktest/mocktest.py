@@ -58,14 +58,17 @@ def Skeleton(cls):
 	import mocktest
 	return subclass_only(cls, ('setUp', 'tearDown'), safe_superclasses=(unittest.TestCase, object, mocktest.TestCase))
 
-def _compose(hook, func):
-	if hook is None:
-		return func
-	if func is None:
-		return hook
+def _compose(hook, func, onerror=None):
 	def run_hook():
-		hook()
-		func()
+		try:
+			if hook is not None: hook()
+			if func is not None: func()
+		exceptException:
+			try:
+				if onerror is not None: onerror()
+			except StandardError: pass
+			raise
+
 	run_hook.__name__ = func.__name__
 	return run_hook
 
@@ -133,16 +136,10 @@ class TestCase(unittest.TestCase):
 	ignore = globals()['ignore']
 	def __init__(self, methodName = 'runTest'):
 		super(TestCase, self).__init__(methodName)
-		try:
-			subclass_setup = self.setUp
-		except AttributeError:
-			subclass_setup = None
-		try:
-			subclass_teardown = self.tearDown
-		except AttributeError:
-			subclass_teardown = None
+		subclass_setup = getattr(self, 'setUp', None)
+		subclass_teardown = getattr(self, 'tearDown', None)
 		
-		self.setUp = _compose(self.__setup, subclass_setup)
+		self.setUp = _compose(self.__setup, subclass_setup, onerror=self.__teardown)
 		self.tearDown = _compose(self.__teardown, subclass_teardown)
 
 	def __setup(self):
