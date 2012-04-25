@@ -36,8 +36,11 @@ clean:
 0:
 	mkzero-gfxmonk -p mocktest -p setup.py mocktest.xml
 
-test:
+test: mocktest-local.xml
 	0launch --command=test mocktest-local.xml
+
+mocktest-local.xml: mocktest.xml
+	0local mocktest.xml
 
 html:
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
