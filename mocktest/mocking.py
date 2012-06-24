@@ -324,7 +324,11 @@ class RecursiveStub(Object):
 		"""
 		Set child methods via kwargs, e.g.:
 
-			>>> mock("name").with_children(x=1, y=mock('child y'))
+			>>> mock("name").with_methods(x=1, y=mock('child y'))
+			>>> obj.x()
+			1
+			>>> obj.y()
+			'child y'
 		"""
 		return assign_kwargs_methods(self, **methods)
 
