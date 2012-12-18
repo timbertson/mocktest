@@ -50,7 +50,7 @@ http://gfxmonk.net/dist/doc/mocktest/doc/
 			<p>Zero install feed: <a href="http://gfxmonk.net/dist/0install/mocktest.xml">http://gfxmonk.net/dist/0install/mocktest.xml</a> (this is the preferred distribution method)</p>
 			<p>Cheese shop entry: <a href="http://pypi.python.org/pypi/mocktest">http://pypi.python.org/pypi/mocktest</a></p>
 			<h2 id="documentation-installation">Documentation / Installation</h2>
-			<p>Please see the full documentation online at: <a href="http://gfxmonk.net/dist/doc/mocktest/doc/">http://gfxmonk.net/dist/doc/mocktest/doc/</a></p>
+			<p>Please see the full documentation online at: <a href="http://gfxmonk.net/dist/doc/mocktest/doc">http://gfxmonk.net/dist/doc/mocktest/doc</a>/</p>
 		</div>
 	</rich-description>
 	<group>
@@ -84,6 +84,10 @@ http://gfxmonk.net/dist/doc/mocktest/doc/
 		<implementation id="sha1new=05d0171a59e83e25d27cd5bbca9c032f34f43557" released="2012-04-25" version="0.6.3">
 			<manifest-digest sha256="933f4c25956d71c440be1079002ed413eec110b7d99bf703f3e1af80c0dd55e5"/>
 			<archive href="http://gfxmonk.net/dist/0install/mocktest/mocktest-0.6.3.tgz" size="49893"/>
+		</implementation>
+		<implementation id="sha1new=0e63f719f8ff9fe3f057fda34f4c3f28482c988c" released="2012-12-18" version="0.6.4">
+			<manifest-digest sha256="9611e5c4bda7db3c0ebcde226e1756b5378987c3e08742bf720d62cb2ce4a502"/>
+			<archive href="http://gfxmonk.net/dist/0install/mocktest/mocktest-0.6.4.tgz" size="49933"/>
 		</implementation>
 	</group>
 </interface>
