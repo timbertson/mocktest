@@ -193,7 +193,7 @@ is executed).
 Expecting Arguments
 ^^^^^^^^^^^^^^^^^^^
 
-| To specify what argument's you're expecting, just pass them in:
+| To specify what arguments you're expecting, just pass them in:
 | ``expect(obj).method(<args>)``
 
 e.g:
