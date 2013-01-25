@@ -49,6 +49,19 @@ class TestMockingCalls(TestCase):
 		assert obj.meth(1,2,3) == '123'
 		assert obj.meth(3, 2, 1) == 'foo'
 		self.assertRaises(AttributeError, lambda: obj.meth2)
+
+	@passing
+	def test_multiple_return_values(self):
+		when(obj).meth.then_return('foo', 'bar', 'baz')
+		assert obj.meth() == 'foo'
+		assert obj.meth() == 'bar'
+		assert obj.meth() == 'baz'
+		try:
+			obj.meth()
+			self.fail()
+		except AssertionError, e:
+			self.assertTrue("Stubbed method 'meth' ran out of return values." in str(e))
+			self.assertTrue("Received 4 calls with arguments:\n" in str(e))
 	
 	def test_should_revert_all_replaced_attrs(self):
 		self.assertEquals(_dir(obj), [])

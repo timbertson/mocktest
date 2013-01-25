@@ -17,6 +17,7 @@ __all__ = [
 	'Object',
 ]
 
+class ReturnValuesExhausted(Exception): pass
 
 Settable = collections.namedtuple('Settable', ('get','set','delete', 'error'))
 Item = Settable(
@@ -379,10 +380,22 @@ class StubbedMethod(object):
 		self.received_calls.append(call)
 		for act in reversed(self._acts):
 			if act._matches(call):
-				return act._act_upon(call)
+				try:
+					return act._act_upon(call)
+				except ReturnValuesExhausted:
+					raise AssertionError(
+						"%r ran out of return values.\n"
+						"Received %s"
+						% (act, act.describe_reality(self.received_calls)))
 		else:
 			act_condition_descriptions = ["   - " + act.condition_description for act in reversed(self._acts)]
-			raise TypeError("stubbed method %r received unexpected arguments: %s\nAllowable argument conditions are:\n%s" % (self._name, call.desc(),"\n".join(act_condition_descriptions)))
+			raise TypeError(
+				"stubbed method %r received unexpected arguments: %s\n"
+				"Allowable argument conditions are:\n%s" % (
+					self._name,
+					call.desc(),
+					"\n".join(act_condition_descriptions))
+				)
 
 	def _verify(self):
 		for act in self._acts:
@@ -612,9 +625,21 @@ class MockAct(object):
 				i += 1
 		return desc
 
-	def and_return(self, val):
+	def and_return(self, val, *subsequent_vals):
 		"""
 		When this act matches, return the given `result` to the caller.
+		If provided with multiple arguments, those values will be returned in order. e.g:
+
+			>>> expect(obj).foo().and_return(True, True, False)
+			>>> obj.foo()
+			True
+			>>> obj.foo()
+			True
+			>>> obj.foo()
+			False
+
+		Once all return values have been used up, any further calls with throw a :class:`~mocktest.MockError`.
+
 
 		**Note:** :func:`and_raise`, :func:`and_return` and :func:`and_call` each have a `then_*` alias
 		for better readability when using :func:`when`. e.g:
@@ -627,7 +652,17 @@ class MockAct(object):
 		
 		Both `and_` and `then_` versions have the same effect however.
 		"""
-		self._action = lambda *a, **k: val
+		if subsequent_vals:
+			vals = [val] + list(subsequent_vals)
+			def action(*a, **k):
+				try:
+					return vals.pop(0)
+				except IndexError:
+					raise ReturnValuesExhausted()
+ 
+			self._action = action
+		else:
+			self._action = lambda *a, **k: val
 		return self
 	then_return = and_return
 	

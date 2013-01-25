@@ -45,9 +45,9 @@ copyright = u'Tim Cuthbertson'
 # built documents.
 #
 # The short X.Y version.
-version = '0.6.4'
+version = '0.6.5'
 # The full version, including alpha/beta/rc tags.
-release = '0.6.4'
+release = '0.6.5'
 
 autodoc_default_flags = ['members']
 

@@ -56,7 +56,8 @@ http://gfxmonk.net/dist/doc/mocktest/doc/
 	<group>
 		<environment insert="" mode="prepend" name="PYTHONPATH"/>
 		<command name="test">
-			<runner command="run-py2" interface="http://gfxmonk.net/dist/0install/nosetests-runner.xml"/>
+			<runner command="core" interface="http://gfxmonk.net/dist/0install/nosetests-runner.xml"/>
+			<requires importance="optional" interface="http://gfxmonk.net/dist/0install/rednose.xml"/>
 		</command>
 		<requires interface="http://repo.roscidus.com/python/python">
 			<version before="3"/>
@@ -88,6 +89,10 @@ http://gfxmonk.net/dist/doc/mocktest/doc/
 		<implementation id="sha1new=0e63f719f8ff9fe3f057fda34f4c3f28482c988c" released="2012-12-18" version="0.6.4">
 			<manifest-digest sha256="9611e5c4bda7db3c0ebcde226e1756b5378987c3e08742bf720d62cb2ce4a502"/>
 			<archive href="http://gfxmonk.net/dist/0install/mocktest/mocktest-0.6.4.tgz" size="49933"/>
+		</implementation>
+		<implementation id="sha1new=675de1efa34f9f0c87a66f5c3d41b3ed5caafcdd" released="2013-01-25" version="0.6.5">
+			<manifest-digest sha256="13bd6e5e44cd0925b241f683bd91d574366290edf9aeb0d9687b40c9044abaaa"/>
+			<archive href="http://gfxmonk.net/dist/0install/mocktest/mocktest-0.6.5.tgz" size="51074"/>
 		</implementation>
 	</group>
 </interface>
