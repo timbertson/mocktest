@@ -41,7 +41,7 @@ test: mocktest-local.xml
 
 test-all: mocktest-local.xml
 	0install run http://0install.net/2008/interfaces/0test.xml mocktest-local.xml \
-		http://repo.roscidus.com/python/python 2.6,2.7 2.7,2.8 3.0,4
+		http://repo.roscidus.com/python/python 2.7,2.8 3.0,4
 
 mocktest-local.xml: mocktest.xml
 	0local mocktest.xml

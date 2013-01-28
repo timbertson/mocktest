@@ -31,7 +31,7 @@ class _MockTransaction(object):
 		for action in reversed(self.teardown_actions):
 			try:
 				action()
-			except StandardError as e:
+			except Exception as e:
 				errors.append(e)
 		self.teardown_actions = None
 		self.started = False

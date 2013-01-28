@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 """
 Basic Matchers
 ^^^^^^^^^^^^^^
@@ -118,7 +119,7 @@ class AnyObject(Matcher, dict):
 	def __call__(self, cls=None):
 		if cls is None:
 			return self
-		from type_matcher import TypeMatcher
+		from .type_matcher import TypeMatcher
 		return TypeMatcher(cls)
 
 	def matches(self, other):

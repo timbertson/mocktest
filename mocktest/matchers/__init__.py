@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 """
 Argument Matchers
 -----------------
@@ -13,7 +14,7 @@ Argument Matchers
 .. automodule:: mocktest.matchers.collections
 	:members:
 """
-from base import *
-from type_matcher import *
-from string import *
-from collections import *
+from .base import *
+from .type_matcher import *
+from .string import *
+from .collections import *

@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from __future__ import print_function
 """
 Test Infrastructure
 -------------------
@@ -12,10 +14,11 @@ __all__ = (
 import unittest
 import re
 import sys
-import core
-from mocking import _special_method
+from . import core
+from .mocking import _special_method
 import types
 from functools import wraps
+import collections
 
 __unittest = True
 
@@ -41,13 +44,15 @@ def subclass_only(parent, method_names, safe_superclasses=()):
 		attr = getattr(parent, name)
 		if _special_method(name): return
 		if isinstance(attr, types.MethodType):
-			if not safe_method(name):
-				return
+			#python2 only:
+			if not safe_method(name): return
 			# make a copy of the method that's tied to the destination class instead of the source
 			attr = types.MethodType(attr.im_func, None, cls)
+		elif callable(attr):
+			if not safe_method(name): return
 		setattr(cls, name, attr)
 
-	map(copy_attr, dir(parent))
+	for attr in dir(parent): copy_attr(attr)
 	return cls
 
 def Skeleton(cls):
@@ -55,7 +60,7 @@ def Skeleton(cls):
 	Generate a subclass inheriting only private methods and setUp/tearDown, for the purpose
 	of inheriting test setup but not any actual test implementations
 	"""
-	import mocktest
+	from . import mocktest
 	return subclass_only(cls, ('setUp', 'tearDown'), safe_superclasses=(unittest.TestCase, object, mocktest.TestCase))
 
 def _compose(hook, func, onerror=None):
@@ -66,7 +71,7 @@ def _compose(hook, func, onerror=None):
 		except Exception:
 			try:
 				if onerror is not None: onerror()
-			except StandardError: pass
+			except Exception: pass
 			raise
 
 	run_hook.__name__ = func.__name__
@@ -104,13 +109,13 @@ def pending(function, reason = None):
 		try:
 			function(*args, **kwargs)
 			success = True
-		except StandardError:
+		except Exception:
 			if reason_str:
-				print >> sys.stderr, "[[[ PENDING ]]]%s ... " % (reason_str,)
+				print("[[[ PENDING ]]]%s ... " % (reason_str,), file=sys.stderr)
 			if SkipTest is not None:
 				raise SkipTest(reason_str)
 		if success:
-			raise AssertionError, "%s%s PASSED unexpectedly " % (fn_name, reason_str)
+			raise AssertionError("%s%s PASSED unexpectedly " % (fn_name, reason_str))
 	return actually_call_it
 
 @ParamDecorator
@@ -119,7 +124,7 @@ def ignore(function, reason = None):
 	reason_str = "" if reason is None else " (%s)" % reason
 	@wraps(function)
 	def actually_call_it(*args, **kwargs):
-		print >> sys.stderr, "[[[ IGNORED ]]]%s ... " % (reason_str,)
+		print("[[[ IGNORED ]]]%s ... " % (reason_str,), file=sys.stderr)
 	return actually_call_it
 
 class TestCase(unittest.TestCase):
@@ -235,7 +240,7 @@ class TestCase(unittest.TestCase):
 
 		try:
 			func()
-		except exception, exc:
+		except exception as exc:
 			if args is not None:
 				self.failIf(exc.args != args,
 					"%s raised %s with unexpected args: "\

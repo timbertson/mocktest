@@ -1,2 +1,2 @@
-class MockError(StandardError):
+class MockError(Exception):
 	pass

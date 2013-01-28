@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+
 """
 Collection Matchers
 -------------------
@@ -36,7 +38,7 @@ Collection Matchers
 
 
 """
-from base import Matcher, KwargsMatcher, SplatMatcherMaker, Any
+from .base import Matcher, KwargsMatcher, SplatMatcherMaker, Any
 __all__ = [
 	'object_containing',
 	'dict_containing',

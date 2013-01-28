@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 """
 String Matchers
 ---------------
@@ -16,7 +17,7 @@ __all__ = [
 	'string_containing',
 ]
 import re
-from base import Matcher
+from .base import Matcher
 
 class StringRegexMatcher(Matcher):
 	def __init__(self, regex):

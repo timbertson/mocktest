@@ -1,12 +1,13 @@
-from matchers import Matcher, SplatMatcher
-from mockerror import MockError
-from callrecord import Call
-from transaction import MockTransaction
+from __future__ import absolute_import
+from .matchers import Matcher, SplatMatcher
+from .mockerror import MockError
+from .callrecord import Call
+from .transaction import MockTransaction
 import itertools
 import collections
 import operator
 
-from lib.singletonclass import ensure_singleton_class
+from .lib.singletonclass import ensure_singleton_class
 __unittest = True
 
 __all__ = [
@@ -150,7 +151,7 @@ def assign_kwargs_methods(self, **methods):
 		setattr(self, k, do_return(v))
 	return self
 
-from lib.realsetter import RealSetter
+from .lib.realsetter import RealSetter
 class RecursiveAssignmentWrapper(RealSetter):
 	"""
 	The return value from :func:`modify`.
@@ -450,7 +451,7 @@ class MockAct(object):
 	def _satisfied_by(self, calls):
 		if self._multiplicity is None:
 			return True
-		matched_calls = filter(self._matches, calls)
+		matched_calls = list(filter(self._matches, calls))
 		return self._multiplicity(len(matched_calls))
 
 	def _act_upon(self, call):
@@ -534,7 +535,7 @@ class MockAct(object):
 		"""
 		def check_args(a, args):
 			try:
-				splat_pos = map(lambda x: isinstance(x, SplatMatcher), args).index(True)
+				splat_pos = [isinstance(x, SplatMatcher) for x in args].index(True)
 			except ValueError:
 				splat_pos = None
 
@@ -573,7 +574,7 @@ class MockAct(object):
 							others[k] = v
 					return included, others
 
-				explicit_kwargs, wildcard_kwargs = splitdict(k, kwargs.keys())
+				explicit_kwargs, wildcard_kwargs = splitdict(k, list(kwargs.keys()))
 				return check_kwargs(explicit_kwargs, kwargs) and wildcard_kwargs_matcher.matches(wildcard_kwargs)
 
 			if not len(k) == len(kwargs):

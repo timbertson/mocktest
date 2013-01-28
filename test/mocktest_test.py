@@ -1,3 +1,5 @@
+
+
 import unittest
 import re
 import sys
@@ -24,7 +26,7 @@ class TestAutoSpecVerification(unittest.TestCase):
 		core._setup()
 		self.output = []
 		def write(s):
-			print "appending: %s" % s
+			print("appending: %s" % s)
 			self.output.append(s)
 		modify(sys).stderr.write = write
 	
@@ -48,8 +50,8 @@ class TestAutoSpecVerification(unittest.TestCase):
 		result = self.run_suite(SingleTest)
 		
 		if not result.wasSuccessful():
-			print "ERRORS: %s" % (result.errors,)
-			print "FAILURES: %s" % (result.failures,)
+			print("ERRORS: %s" % (result.errors,))
+			print("FAILURES: %s" % (result.failures,))
 		return result
 		
 	def test_should_hijack_setup_and_teardown(self):
@@ -109,7 +111,7 @@ class TestAutoSpecVerification(unittest.TestCase):
 		@pending
 		def test_failure(self):
 			callback('a')
-			raise RuntimeError, "something went wrong!"
+			raise RuntimeError("something went wrong!")
 		self.assert_(self.run_method(test_failure).wasSuccessful())
 		
 		@pending("reason")
@@ -136,7 +138,7 @@ class TestAutoSpecVerification(unittest.TestCase):
 			from unittest import SkipTest
 			self.assertRaises(SkipTest, test_failed_pending)
 		except ImportError:
-			print "cant find SkipTest, so this test case won't work"
+			print("cant find SkipTest, so this test case won't work")
 	
 	def test_invalid_usage_after_teardown(self):
 		core._teardown()
@@ -145,8 +147,8 @@ class TestAutoSpecVerification(unittest.TestCase):
 			try:
 				m = mock()
 				expect(m).foo().never()
-			except Exception, e_:
-				print repr(e_)
+			except Exception as e_:
+				print(repr(e_))
 				e = e_
 
 			self.assertFalse(e is None, "no exception was raised")
@@ -167,7 +169,7 @@ class TestAutoSpecVerification(unittest.TestCase):
 		self.assertEqual(0, len(results.errors))
 
 	def make_error(self, *args, **kwargs):
-		print "runtime error is being raised..."
+		print("runtime error is being raised...")
 		raise SomeError(*args, **kwargs)
 	
 	def test_assert_equal_should_be_friendly_for_arrays(self):
@@ -178,7 +180,7 @@ class TestAutoSpecVerification(unittest.TestCase):
 		self.assertFalse(result.wasSuccessful())
 		failmsgs = result.failures[0][1].split('\n')
 		
-		print "failmsgs = %s" % (failmsgs,)
+		print("failmsgs = %s" % (failmsgs,))
 		
 		self.assertTrue('AssertionError: [1, 2, 3] != [1, 4, 3]' in failmsgs)
 		self.assertTrue('lists differ at index 1:' in failmsgs)
@@ -192,7 +194,7 @@ class TestAutoSpecVerification(unittest.TestCase):
 		self.assertFalse(result.wasSuccessful())
 		failmsgs = result.failures[0][1].split('\n')
 		
-		print "failmsgs = %s" % (failmsgs,)
+		print("failmsgs = %s" % (failmsgs,))
 		
 		self.assertTrue('AssertionError: (1, 2, 3) != (1, 4, 3)' in failmsgs)
 		self.assertTrue('lists differ at index 1:' in failmsgs)
@@ -206,7 +208,7 @@ class TestAutoSpecVerification(unittest.TestCase):
 		self.assertFalse(result.wasSuccessful())
 		failmsgs = result.failures[0][1].split('\n')
 		
-		print "failmsgs = %s" % (failmsgs,)
+		print("failmsgs = %s" % (failmsgs,))
 		
 		self.assertTrue('AssertionError: [1, 2, 3] != [1]' in failmsgs)
 		self.assertTrue('lists differ at index 1:' in failmsgs)
@@ -226,7 +228,7 @@ class TestAutoSpecVerification(unittest.TestCase):
 		self.assertFalse(result.wasSuccessful())
 		failmsgs = result.failures[0][1].split('\n')
 		
-		print "failmsgs = %s" % (failmsgs,)
+		print("failmsgs = %s" % (failmsgs,))
 		
 		self.assertTrue("AssertionError: %r != %r" % ({'a': 'b'}, {'4': 'x', '5': 'd'}) in failmsgs)
 		self.assertTrue("dict keys differ: ['a'] != ['4', '5']" in failmsgs)
@@ -239,7 +241,7 @@ class TestAutoSpecVerification(unittest.TestCase):
 		self.assertFalse(result.wasSuccessful())
 		failmsgs = result.failures[0][1].split('\n')
 		
-		print "failmsgs = %s" % (failmsgs,)
+		print("failmsgs = %s" % (failmsgs,))
 		
 		self.assertTrue("AssertionError: %r != %r" % ({'a': 'b', '4': 'x'}, {'4': 'x', 'a': 'd'}) in failmsgs)
 		self.assertTrue("difference between dicts: {'a': 'b'} vs {'a': 'd'}" in failmsgs)
@@ -252,8 +254,11 @@ class TestAutoSpecVerification(unittest.TestCase):
 		self.assertFalse(result.wasSuccessful())
 		failmsgs = result.failures[0][1].split('\n')
 		
-		print "failmsgs = %s" % (failmsgs,)
-		self.assertTrue("AssertionError: foo went bad!" in failmsgs)
+		print("failmsgs = %s" % ("\n".join(failmsgs),))
+		self.assertTrue(
+				"AssertionError: foo went bad!" in failmsgs or # py2
+				" : foo went bad!" in failmsgs # py3
+				)
 		
 	def test_assert_equal_should_work_for_dicts(self):
 		def dictEQ(s):
@@ -342,7 +347,7 @@ class TestAutoSpecVerification(unittest.TestCase):
 				m.meth(foo='bar')
 				m.meth()
 				m.meth(1, foo=2)
-		except AssertionError, e:
+		except AssertionError as e:
 			line_agnostic_repr = [
 				re.sub('\.py:[0-9 ]{3} ', '.py:LINE ', line)
 				for line in str(e).split('\n')]
@@ -368,7 +373,7 @@ class TestAutoSpecVerification(unittest.TestCase):
 		# raise AssertionErrors. This causes unittest to think that mocktest is
 		# an internal part of unittest.
 		mocktest_file_names = os.listdir(os.path.join(os.path.dirname(__file__), '..','mocktest'))
-		mocktest_file_names = filter(lambda x: x.endswith('.py'), mocktest_file_names)
+		mocktest_file_names = [x for x in mocktest_file_names if x.endswith('.py')]
 		self.assertTrue(len(mocktest_file_names) > 2) # make sure we have some file names
 		def ensure_no_mocktest_files_appear_in_failure(failure_func):
 			result = self.run_method(failure_func)
@@ -401,7 +406,7 @@ class MockTestTest(unittest.TestCase):
 				f.foo('a')
 				f.foo()
 			raise RuntimeError("should not reach here!")
-		except AssertionError, e:
+		except AssertionError as e:
 			assert re.compile('Mock "foo" .*expected exactly 1 calls.* received 2 calls.*', re.DOTALL).match(str(e)), str(e)
 		
 class Mystr(object):
@@ -423,8 +428,8 @@ class TestFailuresDontAffectSuccessiveTests(unittest.TestCase):
 				expect(foo).split('a')
 	
 			def test_two(self):
-				print foo
-				print foo.split('a')
+				print(foo)
+				print(foo.split('a'))
 				self.assertEqual(foo.split('a'), ['bl','h'])
 
 		suite = unittest.makeSuite(InnerTest)

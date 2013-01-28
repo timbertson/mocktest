@@ -1,3 +1,4 @@
+from __future__ import print_function
 from mocktest import *
 from mocktest.transaction import MockTransaction
 from mocktest.mockerror import MockError
@@ -6,7 +7,7 @@ import unittest
 from functools import wraps
 
 def _dir(obj):
-	return filter(lambda x: not x.startswith('_'), dir(obj))
+	return [x for x in dir(obj) if not x.startswith('_')]
 
 #TODO: expose these for mocktest_test?
 def run_func(self, func):
@@ -59,7 +60,7 @@ class TestMockingCalls(TestCase):
 		try:
 			obj.meth()
 			self.fail()
-		except AssertionError, e:
+		except AssertionError as e:
 			self.assertTrue("Stubbed method 'meth' ran out of return values." in str(e))
 			self.assertTrue("Received 4 calls with arguments:\n" in str(e))
 	
@@ -157,7 +158,7 @@ class TestMockingSpecialMethods(TestCase):
 		with MockTransaction:
 			when(obj).__call__(2).then_return('two')
 			assert obj(2) == 'two'
-			print type(obj)
+			print(type(obj))
 			assert type(obj) is not Object
 			assert isinstance(obj, Object)
 		assert type(obj) is Object
@@ -401,8 +402,8 @@ class TestSkeletons(TestCase):
 		suite = unittest.makeSuite(SecondTestCase)
 		result = unittest.TestResult()
 		suite.run(result)
+		assert result.wasSuccessful(), "\n".join([repr(err[0]) for err in (result.errors + result.failures)])
 		assert result.testsRun == 1, repr(result)
-		assert result.wasSuccessful(), result.errors[0][1]
 
 
 from mocktest.mocking import MockAct

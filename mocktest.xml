@@ -33,10 +33,11 @@ http://gfxmonk.net/dist/doc/mocktest/doc/
 		classifiers=[
 			"License :: OSI Approved :: BSD License",
 			"Programming Language :: Python",
-			"Development Status :: 4 - Beta",
 			"Intended Audience :: Developers",
 			"Topic :: Software Development :: Libraries :: Python Modules",
 			"Topic :: Software Development :: Testing",
+			"Programming Language :: Python :: 2",
+			"Programming Language :: Python :: 3",
 		],
 		keywords='test mock expect expectation stub rspec unittest',
 		license='GPLv3'
@@ -94,5 +95,13 @@ http://gfxmonk.net/dist/doc/mocktest/doc/
 			<manifest-digest sha256="13bd6e5e44cd0925b241f683bd91d574366290edf9aeb0d9687b40c9044abaaa"/>
 			<archive href="http://gfxmonk.net/dist/0install/mocktest/mocktest-0.6.5.tgz" size="51074"/>
 		</implementation>
+	</group>
+	<group>
+		<environment insert="" mode="prepend" name="PYTHONPATH"/>
+		<command name="test">
+			<runner command="core" interface="http://gfxmonk.net/dist/0install/nosetests-runner.xml"/>
+			<requires importance="optional" interface="http://gfxmonk.net/dist/0install/rednose.xml"/>
+		</command>
+		<requires interface="http://repo.roscidus.com/python/python"/>
 	</group>
 </interface>

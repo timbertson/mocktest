@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 """
 Type matchers
 -------------
@@ -21,7 +22,7 @@ __all__ = [
 	'object_with'
 ]
 
-from base import Matcher
+from .base import Matcher
 
 class TypeMatcher(Matcher):
 	def __init__(self, cls):
