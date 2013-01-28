@@ -103,5 +103,9 @@ http://gfxmonk.net/dist/doc/mocktest/doc/
 			<requires importance="optional" interface="http://gfxmonk.net/dist/0install/rednose.xml"/>
 		</command>
 		<requires interface="http://repo.roscidus.com/python/python"/>
+		<implementation id="sha1new=4340452fb5d82c468b66f39c544250266629e95e" released="2013-01-28" version="0.7">
+			<manifest-digest sha256="70f7634b428b5372a66df1f893e734f5c69cc72850841a1ff0c5f3d574bea0ca"/>
+			<archive href="http://gfxmonk.net/dist/0install/mocktest/mocktest-0.7.tgz" size="54014"/>
+		</implementation>
 	</group>
 </interface>
