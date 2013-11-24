@@ -58,7 +58,7 @@ http://gfxmonk.net/dist/doc/mocktest/doc/
 		<environment insert="" mode="prepend" name="PYTHONPATH"/>
 		<command name="test">
 			<runner command="core" interface="http://gfxmonk.net/dist/0install/nosetests-runner.xml"/>
-			<requires importance="optional" interface="http://gfxmonk.net/dist/0install/rednose.xml"/>
+			<requires importance="recommended" interface="http://gfxmonk.net/dist/0install/rednose.xml"/>
 		</command>
 		<requires interface="http://repo.roscidus.com/python/python">
 			<version before="3"/>
@@ -100,7 +100,7 @@ http://gfxmonk.net/dist/doc/mocktest/doc/
 		<environment insert="" mode="prepend" name="PYTHONPATH"/>
 		<command name="test">
 			<runner command="core" interface="http://gfxmonk.net/dist/0install/nosetests-runner.xml"/>
-			<requires importance="optional" interface="http://gfxmonk.net/dist/0install/rednose.xml"/>
+			<requires importance="recommended" interface="http://gfxmonk.net/dist/0install/rednose.xml"/>
 		</command>
 		<requires interface="http://repo.roscidus.com/python/python"/>
 		<implementation id="sha1new=4340452fb5d82c468b66f39c544250266629e95e" released="2013-01-28" version="0.7">
