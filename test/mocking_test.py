@@ -5,6 +5,17 @@ from mocktest.mockerror import MockError
 from unittest import TestCase
 import unittest
 from functools import wraps
+import os
+import inspect
+
+try:
+	# py3
+	import builtins
+	from io import StringIO
+except ImportError:
+	# py2
+	from StringIO import StringIO
+	import __builtin__ as builtins
 
 def _dir(obj):
 	return [x for x in dir(obj) if not x.startswith('_')]
@@ -172,6 +183,32 @@ class TestMockingSpecialMethods(TestCase):
 	def test_mocking_special_methods_on_class_directly(self):
 		when(Object).__len__().then_return(5)
 		assert len(obj) == 5
+
+class TestMockingBuiltins(TestCase):
+	@passing
+	def test_mocking_open(self):
+		# https://github.com/gfxmonk/mocktest/issues/6
+		orig_open = builtins.open
+
+		# default:
+		when(builtins).open.then_call(orig_open)
+
+		# specific override
+		filename = '/mock_file'
+		fp = StringIO()
+		when(builtins).open(filename, 'r').then_return(fp)
+
+		assert open(filename, 'r') is fp
+		assert open(os.devnull) is not fp
+
+	@passing
+	def test_mocking_inspect_getframeinfo(self):
+		orig = inspect.getframeinfo
+		when(inspect).getframeinfo.then_call(orig)
+
+		# just check this doesn't cause infinite recursion
+		f = inspect.currentframe()
+		inspect.getframeinfo(f)
 	
 class TestExpectations(TestCase):
 	@passing

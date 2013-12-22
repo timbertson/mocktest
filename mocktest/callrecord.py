@@ -2,9 +2,10 @@
 Call Records
 ------------
 """
-import sys, traceback, os
+import sys, os, inspect
 
 __all__ = ['Call']
+_recursion_sentinel = object()
 
 class Call(object):
 	"""
@@ -23,28 +24,38 @@ class Call(object):
 	where a given call was made.
 	:members: args, kwargs
 	"""
+	_call_frameinfo = None
 	def __init__(self, args, kwargs, stack = False):
 		self.tuple = (args, kwargs)
 		self.args = args
 		self.kwargs = kwargs
 
 		if stack is True:
-			self._stack = traceback.extract_stack(sys._getframe())
+			skip_frames = 2 # there are 2 internal mocktest calls between this
+			                # frame and the actual invocation of the mock
+			recurse = _recursion_sentinel
+			current_frame = inspect.currentframe()
+			frame = current_frame and current_frame.f_back
+			while frame:
+				if frame.f_locals.get('recurse', None) is _recursion_sentinel:
+					# we're already collecting a stack for some other call,
+					# stop here to prevent infinite recursion
+					break
+				skip_frames -= 1
+				if skip_frames == 0:
+					self._call_frameinfo = inspect.getframeinfo(frame, 1)
+					break
+				frame = frame.f_back
 
 	@classmethod
 	def like(cls, *a, **kw):
 		"""capture a call with the given arguments"""
 		return cls(a, kw)
 
-	def _concise_stack(self):
-		stack = self._stack
-		relevant_line = stack[-3]
-		return self._concise_stack_line(relevant_line)
-	
-	def _concise_stack_line(self, line):
-		file_, line, func, code = line
+	def _concise_stack_line(self):
+		file_, line, func, (code,), _idx = self._call_frameinfo
 		file_ = os.path.basename(file_)
-		return "%s:%-3s :: %s" % (file_, line, code)
+		return "%s:%-3s :: %s" % (file_, line, code.strip())
 		
 	def __hash__(self):
 		return hash(self.tuple)
@@ -77,8 +88,8 @@ class Call(object):
 			kwargs = sep.join(["%s=%r" % (key, val) for key, val in self.kwargs.items()])
 			arg_desc = "(%s)" % (sep.join(filter(None, (args, kwargs))),)
 		try:
-			if include_stack:
-				arg_desc = "%-24ls // %s" % (arg_desc, self._concise_stack())
+			if include_stack and self._call_frameinfo is not None:
+				arg_desc = "%-24ls // %s" % (arg_desc, self._concise_stack_line())
 		finally:
 			return arg_desc
 
