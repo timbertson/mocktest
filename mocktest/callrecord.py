@@ -36,16 +36,20 @@ class Call(object):
 			recurse = _recursion_sentinel
 			current_frame = inspect.currentframe()
 			frame = current_frame and current_frame.f_back
+			target_frame = None
 			while frame:
 				if frame.f_locals.get('recurse', None) is _recursion_sentinel:
 					# we're already collecting a stack for some other call,
-					# stop here to prevent infinite recursion
+					# cancel this one to prevent infinite recursion
+					target_frame = None
 					break
 				skip_frames -= 1
 				if skip_frames == 0:
-					self._call_frameinfo = inspect.getframeinfo(frame, 1)
-					break
+					target_frame = frame
 				frame = frame.f_back
+
+			if target_frame is not None:
+				self._call_frameinfo = inspect.getframeinfo(target_frame, 1)
 
 	@classmethod
 	def like(cls, *a, **kw):
