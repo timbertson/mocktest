@@ -12,7 +12,7 @@ setup(
 	long_description="\n**Note**: This package has been built automatically by\n`zero2pypi <http://gfxmonk.net/dist/0install/zero2pypi.xml>`_.\nIf possible, you should use the zero-install feed instead:\nhttp://gfxmonk.net/dist/0install/mocktest.xml\n\n----------------\n\nmocktest\n********\n... is a powerful and easy-to-use mocking library, inspired by rspec and\nsimilar in some ways to Michael Foord's popular Mock module.\n\nSource / Issues:\nhttp://github.com/gfxmonk/mocktest/tree/master\n\n\nZero install feed:\nhttp://gfxmonk.net/dist/0install/mocktest.xml\n(this is the preferred distribution method)\n\n\nCheese shop entry:\nhttp://pypi.python.org/pypi/mocktest\n\n\nDocumentation / Installation\n----------------------------\nPlease see the full documentation online at:\nhttp://gfxmonk.net/dist/doc/mocktest/doc/\n",
 	name='mocktest',
 	url='http://gfxmonk.net/dist/doc/mocktest/doc/',
-	version='0.7.1',
+	version='0.7.2',
 classifiers=[
 			"Programming Language :: Python",
 			"Intended Audience :: Developers",
