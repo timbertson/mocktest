@@ -1,3 +1,4 @@
+/gup
 *.pyc
 build
 dist
@@ -5,5 +6,6 @@ dist
 *.egg-info
 *.tmproj
 doc/build
+*-local.xml
 .*
 0inst
