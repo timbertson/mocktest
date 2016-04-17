@@ -1,3 +1,5 @@
+.. image:: http://gfxmonk.net/dist/status/project/mocktest.png
+
 About mocktest
 **************
 mocktest is a powerful and easy-to-use mocking library, inspired by rspec and
@@ -18,31 +20,15 @@ It's released under the GPLv3 licence (see the LICENCE file).
 | http://github.com/gfxmonk/mocktest/tree/master
 
 
-| Cheese shop entry:
+| Pypi:
 | http://pypi.python.org/pypi/mocktest
 
-
-| Zero install feed:
-| http://gfxmonk.net/dist/0install/mocktest.xml
 
 API reference
 -----------------
 
 This document is an introduction, if you are looking for an API reference
 you should read the :mod:`mocktest module documentation <mocktest>`.
-
-Installation
-------------
-The preferred distribution method is via `Zero Install <http://0install.net/>`_
-
-If you just want to try it out and don't want to make a feed that
-depends on mocktest, you can run::
-
-  exec "`0launch http://gfxmonk.net/dist/0install/0path.xml http://gfxmonk.net/dist/0install/mocktest.xml`"
-
-And your ``PYTHONPATH`` will be set up to contain ``mocktest``.
-
-(**Note**: Obviously, this requires ``0launch`` to be installed. On ubuntu, this is part of the ``zeroinstall-injector`` package)
 
 Important notes for this version
 --------------------------------
