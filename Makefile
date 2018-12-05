@@ -36,8 +36,9 @@ clean:
 0:
 	mkzero-gfxmonk -p mocktest -p setup.py mocktest.xml
 
-test: mocktest-local.xml
-	0launch --command=test mocktest-local.xml
+test:
+	python -m unittest  test.mocking_test test.mocktest_test
+	python3 -m unittest test.mocking_test test.mocktest_test
 
 test-all: mocktest-local.xml
 	0install run http://0install.net/2008/interfaces/0test.xml mocktest-local.xml \

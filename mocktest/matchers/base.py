@@ -51,9 +51,6 @@ class Matcher(object):
 		matcher_list = (ElementWiseSplatMatcher(self),)
 		return iter(matcher_list)
 
-	def __getitem__(self, name):
-		return None
-
 	def matches(self, obj):
 		"""return True if this matcher is satisfied by the given object, else False"""
 		raise AssertionError("matcher has not overidden `matches`!")
@@ -109,12 +106,38 @@ class ElementWiseSplatMatcher(SplatMatcher):
 	def desc(self):
 		return "each argument is [%r]" % (self._matcher.desc(),)
 
-class AnyObject(Matcher, dict):
+class KwargsMatcher(Matcher):
+	def __init__(self, matcher):
+		super(KwargsMatcher, self).__init__()
+		self._matcher = matcher
+		self._dict = {'__kwargs': matcher}
+
+	def matches(self, *a):
+		raise RuntimeError("KwargsMatcher instance used without prefixing with '**'")
+
+	desc = matches
+
+	# implements kwargs-splat (**Any)
+	def keys(self):
+		return {'__kwargs': self}.keys()
+	def __getitem__(self, key):
+		return self._dict[key]
+
+	# fallback to dict
+	def __getattr__(self, key):
+		return getattr(self._dict, key)
+
+
+class AnyObject(KwargsMatcher):
 	"""Matches any object.
 	If called and given a type, returns a :py:class:mocktest.matchers.type_matcher.TypeMatcher: instance for that type
 	"""
 	def __init__(self):
-		dict.__init__(self, __kwargs=self)
+		super(AnyObject, self).__init__(self)
+
+	# implements splat (*Any)
+	def __iter__(self):
+		return iter([SplatMatcher(self)])
 
 	def __call__(self, cls=None):
 		if cls is None:
@@ -127,15 +150,6 @@ class AnyObject(Matcher, dict):
 
 	def desc(self):
 		return "any object"
-
-class KwargsMatcher(Matcher, dict):
-	def __init__(self, matcher):
-		self._matcher = matcher
-		dict.__init__(self, __kwargs=matcher)
-
-	def matches(self, *a):
-		raise RuntimeError("KwargsMatcher instance used without prefixing with '**'")
-	desc = matches
 
 Not = NegatedMatcher
 not_ = NegatedMatcher
